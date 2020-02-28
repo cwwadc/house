@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysDictMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.SysDict">
+		<id column="id" property="id" />
+		<result column="num" property="num" />
+		<result column="pid" property="pid" />
+		<result column="name" property="name" />
+		<result column="tips" property="tips" />
+		<result column="createTime" property="createTime"/>
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, num, pid, name, tips, createTime
+    </sql>
+
+	<select id="listSysDict" resultType="com.msz.VO.SysDictVo">
+		select sd.*,d.`name` as "pname" from sys_dict sd left join sys_dict d on sd.pid = d.id
+		where d.pid = '0'
+			<if test="pid != null and pid != ''">
+				and sd.pid = #{pid}
+			</if>
+			<if test="name != null and name != ''">
+				and sd.name like "%" #{name} "%"
+			</if>
+			<if test="pname != null and pname != ''">
+				and d.name = #{pname}
+			</if>
+		order by sd.num asc
+
+	</select>
+
+</mapper>

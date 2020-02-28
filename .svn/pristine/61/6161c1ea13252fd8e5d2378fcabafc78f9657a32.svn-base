@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysAuthoritiesMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.SysAuthorities">
+		<id column="id" property="id" />
+		<result column="authority" property="authority" />
+		<result column="authorityName" property="authorityName" />
+		<result column="menuId" property="menuId" />
+		<result column="sort" property="sort" />
+		<result column="createTime" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, authority, authorityName, menuId, sort, createTime
+    </sql>
+
+</mapper>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszPayInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszPayInfo">
+        <id column="id" property="id"/>
+        <result column="accountId" property="accountId"/>
+        <result column="type" property="type"/>
+        <result column="amt" property="amt"/>
+        <result column="channel" property="channel"/>
+        <result column="orderId" property="orderId"/>
+        <result column="status" property="status"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+    </resultMap>
+    <!-- byYearMonthGroup 接口 VO -->
+    <resultMap id="PayInfoVO" type="com.msz.VO.PayInfoVO">
+        <id column="date" property="date"/>
+        <result column="amt" property="money"/>
+    </resultMap>
+
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, accountId, accountName, type, amt, channel, orderId, status, updateTime, createTime
+    </sql>
+    <!--  byYearMonthGroup 接口 VO -->
+    <sql id="Pay_Info_VO">
+       DATE_FORMAT(createTime, '%Y年%m月') AS date,sum(amt) AS money
+    </sql>
+
+    <select id="byYearMonthGroup" resultType="java.util.Map">
+        SELECT <include refid="Pay_Info_VO" /> FROM msz_pay_info WHERE accountId = #{accId} GROUP BY date ORDER BY date desc
+    </select>
+
+    <select id="byMonthGroup" resultType="java.util.Map">
+        SELECT <include refid="Base_Column_List" /> FROM msz_pay_info WHERE accountId = #{accId} and DATE_FORMAT(createTime, '%Y年%m月') = #{date}
+    </select>
+
+    <select id="getListByYearMonth" resultType="java.util.Map">
+        SELECT DATE_FORMAT(p.createTime, '%Y年%m月') AS date,sum(p.amt) AS money
+        FROM msz_pay_info p
+        LEFT JOIN msz_order_history o ON o.id=p.orderId
+        LEFT JOIN msz_lease l ON l.id=o.leaseId
+        LEFT JOIN sys_user u ON u.id=l.userId
+        LEFT JOIN sys_org m ON u.orgId=m.id
+        WHERE 0=0
+        <if test="orgId != null and orgId != ''">
+            and m.id = #{orgId}
+        </if>
+        <if test="createTimeMin != null and createTimeMin != ''and createTimeMax != null and createTimeMax != ''">
+            and p.createTime between #{createTimeMin} and #{createTimeMax}
+        </if>
+        and p.channel = 1
+        GROUP BY date ORDER BY date DESC
+    </select>
+
+    <select id="findList" resultType="com.msz.VO.PayInfoReturnParam">
+        SELECT
+            p.*, a.type AS "accountType",a.tel as "accountTel",m.name AS "orgName",m.id as "orgId"
+        FROM
+            msz_pay_info p
+        LEFT JOIN msz_account a ON a.id = p.accountId
+        LEFT JOIN msz_order_history o ON o.id=p.orderId
+        LEFT JOIN msz_lease l ON l.id=o.leaseId
+        LEFT JOIN sys_user u ON u.id=l.userId
+        LEFT JOIN sys_org m ON u.orgId=m.id
+        where 0=0
+        <if test="orgId != null and orgId != ''">
+            and m.id = #{orgId}
+        </if>
+        <if test="createTimeMin != null and createTimeMin != ''and createTimeMax != null and createTimeMax != ''">
+            and p.createTime between #{createTimeMin} and #{createTimeMax}
+        </if>
+        <if test="date != null and date != ''">
+            and DATE_FORMAT(p.createTime, '%Y年%m月') = #{date}
+        </if>
+        and p.channel = 1
+    </select>
+
+    <select id="getPayInfoDesc" resultType="com.msz.VO.PayInfoReturnParam">
+        SELECT
+        p.*, a.type AS "accountType", a.tel AS "accountTel", m.name AS "orgName",m.id as "orgId"
+        FROM
+        msz_pay_info p
+        LEFT JOIN msz_account a ON a.id = p.accountId
+        LEFT JOIN msz_order_info o ON o.id=p.orderId
+        LEFT JOIN msz_lease l ON l.id=o.leaseId
+        LEFT JOIN sys_user u ON u.id=l.userId
+        LEFT JOIN sys_org m ON u.orgId=m.id
+        where p.id = #{id}
+    </select>
+
+    <select id="exportExcelData" resultType="com.msz.VO.PayInfoReturnParam">
+        SELECT
+        p.*, a.type AS "accountType", a.tel AS "accountTel", m.name AS "orgName",m.id as "orgId"
+        FROM
+        msz_pay_info p
+        LEFT JOIN msz_account a ON a.id = p.accountId
+        LEFT JOIN msz_order_info o ON o.id=p.orderId
+        LEFT JOIN msz_lease l ON l.id=o.leaseId
+        LEFT JOIN sys_user u ON u.id=l.userId
+        LEFT JOIN sys_org m ON u.orgId=m.id
+        where 0=0
+        and p.channel = 1
+        <if test="orgId != null and orgId != ''">
+            and m.id = #{orgId}
+        </if>
+        <if test="date != null and date != ''">
+            and DATE_FORMAT(p.createTime, '%Y年%m月') = #{date}
+        </if>
+    </select>
+
+</mapper>

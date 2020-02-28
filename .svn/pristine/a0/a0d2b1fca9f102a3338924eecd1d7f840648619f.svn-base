@@ -1,0 +1,162 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszOrderCharge;
+import com.msz.model.MszOrderInfo;
+import com.msz.model.SysUser;
+import com.msz.service.MszOrderChargeService;
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.service.MszOrderInfoService;
+import com.msz.util.DateUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 缴费收费项目（破坏房屋设施等） 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08 ${time}
+ */
+@Api(value = "/msz-order-charges", description = "缴费收费项目（破坏房屋设施等） 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-order-charges")
+public class MszOrderChargeController {
+
+    /**
+     * 主键ID  id  Integer
+     * <p>
+     * 缴费ID  orderId  Integer
+     * <p>
+     * 费用类型  chargeName  String
+     * <p>
+     * 应收金额  receiveAmount  BigDecimal
+     * <p>
+     * 实收金额  paidAmount  BigDecimal
+     * <p>
+     * 开始时间  startTime  Date
+     * <p>
+     * 结束时间  endTime  Date
+     * <p>
+     * 是否删除  isDel  String
+     * <p>
+     * 创建时间  createTime  Date
+     */
+    @Autowired
+    private MszOrderChargeService mszOrderChargeService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszOrderCharge-------PC@Author=Maoyy", notes = "根据id获取单个MszOrderCharge-------PC@Author=Maoyy")
+    public RespEntity<MszOrderCharge> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszOrderChargeService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszOrderCharge-------PC@Author=Maoyy", notes = "分页查询MszOrderCharge-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszOrderCharge>> list(PagingRequest pagingRequest) {
+        return RespEntity.ok().setResponseContent(mszOrderChargeService.listPage(pagingRequest, null));
+    }
+
+    @Autowired
+    private MszOrderInfoService mszOrderInfoService;
+
+    @PostMapping("/insert")
+    @ApiOperation(value = "保存MszOrderCharge-------PC@Author=Maoyy", notes = "保存MszOrderCharge-------PC@Author=Maoyy")
+    @Transactional
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszOrderCharge mszOrderCharge) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        MszOrderInfo orderInfo = mszOrderInfoService.selectById(mszOrderCharge.getOrderId());
+        int nowDay = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+        orderInfo.setArrearsFlag("1");
+//        if (orderInfo.getCollectMoneyDay() != null) {
+//            if (Integer.parseInt(orderInfo.getCollectMoneyDay()) < nowDay) {
+//                if (orderInfo.getOweTotal().compareTo(new BigDecimal(0)) == 0) {
+//                    orderInfo.setArrearsFlag("0");
+//                }
+//            } else {
+//                orderInfo.setArrearsFlag("0");
+//            }
+//        }else{
+//            if (orderInfo.getOweTotal().compareTo(new BigDecimal(0)) == 0) {
+//                orderInfo.setArrearsFlag("0");
+//            }
+//        }
+        if (mszOrderCharge.getCharge_end_time() != null && mszOrderCharge.getCharge_start_time() != null) {
+            if (DateUtil.isEffectiveDate(new Date(), mszOrderCharge.getCharge_start_time(), mszOrderCharge.getCharge_end_time())) {
+                orderInfo.setReceiveTotal(orderInfo.getReceiveTotal().add(mszOrderCharge.getReceiveAmount()));
+            }
+        } else {
+            orderInfo.setReceiveTotal(orderInfo.getReceiveTotal().add(mszOrderCharge.getReceiveAmount()));
+        }
+        if (!mszOrderChargeService.insert(mszOrderCharge)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        //重新计算欠收
+        orderInfo.setOweTotal(orderInfo.getReceiveTotal().subtract(orderInfo.getPaidTotal()));
+        if (!mszOrderInfoService.updateById(orderInfo)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->新增->成功");
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping("/updateBatch")
+    @ApiOperation(value = "批量修改收费项", notes = "批量修改收费项")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody List<MszOrderCharge> orderChargeList) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszOrderChargeService.updateBatchById(orderChargeList)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->更新->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszOrderCharge-------PC@Author=Maoyy", notes = "根据ID删除MszOrderCharge-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszOrderChargeService.deleteById(id)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "订单缴费收费项目->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

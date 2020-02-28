@@ -1,0 +1,159 @@
+package com.msz.service.impl;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.VO.GuestsVO;
+import com.msz.VO.LeaseReturnParamVO;
+import com.msz.VO.SignedNumAndNotSignedNumAndDisableNumVO;
+import com.msz.common.PagingRequest;
+import com.msz.common.UserCommon;
+import com.msz.dao.*;
+import com.msz.model.MszAccount;
+import com.msz.model.MszRoom;
+import com.msz.model.SysUser;
+import com.msz.service.MszAccountService;
+import com.msz.service.SysUserService;
+import com.msz.util.StringUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+import java.util.List;
+
+
+/**
+ * <p>
+ * 用户信息 服务实现类
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Service
+public class MszAccountServiceImpl extends ServiceImpl<MszAccountMapper, MszAccount> implements MszAccountService {
+
+    @Autowired
+    private MszAccountMapper mszAccountMapper;
+    @Autowired
+    MszLeaseMapper leaseMapper;
+    @Autowired
+    SysUserService sysUserService;
+    @Autowired
+    SysCityMapper sysCityMapper;
+    @Autowired
+    SysOrgMapper sysOrgMapper;
+    @Autowired
+    MszRoomMapper roomMapper;
+    @Autowired
+    UserCommon userCommon;
+
+
+    @Override
+    public PageInfo<MszAccount> listPage(PagingRequest pagingRequest, Wrapper wrapper) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        return new PageInfo<>(super.selectList(wrapper));
+    }
+    @Override
+    public PageInfo<MszAccount> list(Wrapper wrapper) {
+        return new PageInfo<>(super.selectList(wrapper));
+    }
+
+    @Override
+    public PageInfo<MszAccount> leaseByAccount(Integer id) {
+        return new PageInfo<>(mszAccountMapper.leaseByAccount(id));
+    }
+
+    @Override
+    public PageInfo<GuestsVO> getGuestsList(PagingRequest pagingRequest, String name, String state, SysUser user) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        String role = user.getRole();
+        List<GuestsVO> guestsList = null;
+        GuestsVO guestsVO = new GuestsVO();
+        if (StringUtil.IsNotEmpty(state)) {
+            if (state.equals("1")) {
+                guestsVO.setName(name);
+                guestsList = mszAccountMapper.getGuestsList(guestsVO);
+            }
+            if (state.equals("2") || state.equals("3")) {
+                guestsVO.setName(name);
+                guestsVO.setState(Integer.parseInt(state));
+                guestsList = mszAccountMapper.getGuestsListUnsigned(guestsVO);
+            }
+        }
+        return new PageInfo<>(guestsList);
+    }
+
+    @Override
+    public List<GuestsVO> getWeXinGuestsList(PagingRequest pagingRequest, String state,Integer userId ) {
+        GuestsVO guestsVO = new GuestsVO();
+        List<GuestsVO> guestsList = null;
+        if (state.equals("0")){
+            // 待生效
+            guestsVO.setUserId(userId);
+            guestsList = mszAccountMapper.getUnsignedGuests(guestsVO);
+        }if (state.equals("1")){
+            // 执行中
+            guestsVO.setUserId(userId);
+            guestsList = mszAccountMapper.getGuestsList(guestsVO);
+        }
+        return guestsList;
+    }
+
+    @Override
+    public SignedNumAndNotSignedNumAndDisableNumVO getSignedNumAndNotSignedNumAndDisableNum(SysUser user) {
+        String role = user.getRole();
+        SignedNumAndNotSignedNumAndDisableNumVO vo = new SignedNumAndNotSignedNumAndDisableNumVO();
+        GuestsVO guestsVO = new GuestsVO();
+        vo.setSignedNum(mszAccountMapper.getGuestsNum(guestsVO));//已签约
+        guestsVO.setState(0);
+        vo.setNotSignedNum(mszAccountMapper.getUnsignedNum(guestsVO));//未签约
+        guestsVO.setState(1);
+        vo.setDisableNum(mszAccountMapper.getUnsignedNum(guestsVO));//禁用
+        return vo;
+    }
+
+    @Override
+    public List<LeaseReturnParamVO> getMszLeaseByTenantId(Integer id, String status) {
+        MszAccount account = mszAccountMapper.selectById(id);
+        List<LeaseReturnParamVO> leaseList = null;
+        if (account != null) {
+            LeaseReturnParamVO leaseReturnParamVO = new LeaseReturnParamVO();
+            leaseReturnParamVO.setTenantId(id);
+            leaseReturnParamVO.setStatus(status);
+            leaseList = leaseMapper.findList(leaseReturnParamVO);
+            if (leaseList != null && leaseList.size() > 0) {
+                leaseList.forEach(item -> {
+                  /*  item.setOrgName(item.getOrgId() == null ? "" : sysOrgMapper.selectById(item.getOrgId()).getName());
+                    item.setSalesmanName(sysUserService.selectById(item.getUserId()).getTrueName());*/
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        }
+        return leaseList;
+    }
+
+    @Override
+    public PageInfo<MszRoom> getMszRoomByLandlordId(PagingRequest pagingRequest, Integer landlordId) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        List<MszRoom> roomList = roomMapper.selectList(new EntityWrapper<MszRoom>().eq("telId", landlordId));
+        return new PageInfo<>(roomList);
+    }
+
+    @Override
+    public List<MszAccount> getTenantByTel(String tel, SysUser user) {
+        String role = user.getRole();
+        MszAccount mszAccount = new MszAccount();
+        List<MszAccount> tenantList;
+        //客户要求全部查出来
+        mszAccount.setTel(tel);
+        tenantList = mszAccountMapper.getTenantByTel(mszAccount);
+        return tenantList;
+    }
+
+}

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszWalletBillMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszWalletBill">
+		<id column="id" property="id" />
+		<result column="accountId" property="accountId" />
+		<result column="amt" property="amt" />
+		<result column="type" property="type" />
+		<result column="createTime" property="createTime" />
+		<result column="receiverId" property="receiverId" />
+		<result column="receiverType" property="receiverType" />
+		<result column="no" property="no" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, accountId, amt, type, createTime, receiverId, receiverType, no
+    </sql>
+
+</mapper>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszWithdrawMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszWithdraw">
+		<id column="id" property="id" />
+		<result column="no" property="no" />
+		<result column="accountId" property="accountId" />
+		<result column="amt" property="amt" />
+		<result column="cardNo" property="cardNo" />
+		<result column="accountName" property="accountName" />
+		<result column="status" property="status" />
+		<result column="operator" property="operator" />
+		<result column="note" property="note" />
+		<result column="updateTime" property="updateTime" />
+		<result column="createTime" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, accountId, amt, cardNo, accountName, status, operator, note, updateTime, createTime
+    </sql>
+
+	<select id="listAll" resultType="com.msz.VO.WithdrawReturnParamVO" parameterType="com.msz.VO.WithdrawReturnParamVO">
+		SELECT w.*,u.trueName AS "operatorName"
+		FROM msz_withdraw w
+		LEFT JOIN sys_user u ON u.id=w.operator
+		WHERE 0=0
+		<if test="status != null and status != ''">
+			AND w.status = #{status}
+		</if>
+	</select>
+
+	<select id="getListByYearMonth" resultType="java.util.Map">
+		SELECT DATE_FORMAT(createTime, '%Y年%m月') AS date,sum(amt) AS money
+        FROM msz_withdraw WHERE `status` =1
+		<if test="createTimeMin != null and createTimeMin != ''and createTimeMax != null and createTimeMax != ''">
+			and createTime between #{createTimeMin} and #{createTimeMax}
+		</if>
+		GROUP BY date ORDER BY date DESC
+	</select>
+
+	<select id="findList" resultType="com.msz.VO.PayFromVO">
+		select
+        ma.`name`,
+        ma.type,
+        mw.id,
+        mw.NO,
+        mw.accountId,
+        mw.amt,
+        mw.cardNo,
+        mw.accountName,
+        mw.STATUS,
+        mw.operator,
+        mw.note,
+        mw.updateTime,
+        mw.createTime
+        FROM msz_withdraw mw LEFT JOIN msz_account ma ON mw.accountId = ma.id  WHERE `status` = 1
+		<if test="createTimeMin != null and createTimeMin != ''and createTimeMax != null and createTimeMax != ''">
+			and mw.createTime between #{createTimeMin} and #{createTimeMax}
+		</if>
+		<if test="date != null and date != ''">
+			and DATE_FORMAT(mw.createTime, '%Y年%m月') = #{date}
+		</if>
+	</select>
+
+	<select id="exportExcelData" resultType="com.msz.VO.WithdrawReturnParamVO">
+		SELECT w.*,a.tel AS "accountTel"
+		FROM msz_withdraw w
+		LEFT JOIN msz_account a ON w.accountId = a.id
+		where  `status` =1
+		<if test="date != null and date != ''">
+			and DATE_FORMAT(w.createTime, '%Y年%m月') = #{date}
+		</if>
+	</select>
+
+</mapper>

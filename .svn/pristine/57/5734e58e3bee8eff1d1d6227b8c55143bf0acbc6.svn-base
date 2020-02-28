@@ -1,0 +1,282 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.github.pagehelper.PageInfo;
+import com.msz.VO.LeaseReturnParamVO;
+import com.msz.VO.MessageTeamplate;
+import com.msz.VO.MszRefundInfoVO;
+import com.msz.VO.MszWithdrawStatusNum;
+import com.msz.annotation.CurrentUser;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.dao.MszLeaseMapper;
+import com.msz.model.*;
+import com.msz.service.*;
+import com.msz.util.MessageTeamplateUtil;
+import com.msz.util.StringUtil;
+import org.elasticsearch.client.Requests;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import org.yaml.snakeyaml.events.Event;
+
+import javax.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
+import java.util.Date;
+
+
+/**
+ * <p>
+ * 退款信息 前端控制器
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-14 ${time}
+ */
+@Api(value = "/msz-refund-infos", description = "退款信息 接口; Responseble:cww")
+@RestController
+@RequestMapping("/msz-refund-infos")
+public class MszRefundInfoController {
+
+    /**
+     * id  Long
+     * <p>
+     * 退款编号  no  String
+     * <p>
+     * 租约ID  leaseId  Integer
+     * <p>
+     * 房客ID(退款人id)  tenantId  Integer
+     * <p>
+     * 租金  rentPrice  BigDecimal
+     * <p>
+     * 押金  depositPrice  BigDecimal
+     * <p>
+     * 退款合计  total  BigDecimal
+     * <p>
+     * 退款申请时间  applyTime  Date
+     * <p>
+     * 退款申请人id  userId  Integer
+     * <p>
+     * 退款状态 0待审核 1已同意 2已拒绝  status  String
+     * <p>
+     * 是否删除  isDel  String
+     * <p>
+     * 更新时间  updateTime  Date
+     * <p>
+     * 生成时间  createTime  Date
+     */
+    @Autowired
+    private MszRefundInfoService mszRefundInfoService;
+    @Autowired
+    private MszAccountService accountService;
+    @Autowired
+    private MszLeaseService leaseService;
+    @Autowired
+    private MszMessageService messageService;
+    @Autowired
+    private UserCommon userCommon;
+    @Autowired
+    private MszWalletService walletService;
+    @Autowired
+    private MszLeaseService mszLeaseService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszRefundInfo", notes = "根据id获取单个MszRefundInfo")
+    public RespEntity<MszRefundInfo> get(@PathVariable Long id) {
+        return RespEntity.ok().setResponseContent(mszRefundInfoService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+    })
+    @ApiOperation(value = "分页查询MszRefundInfo", notes = "分页查询MszRefundInfo")
+    @GetMapping("/getRefundInfoList")
+    public RespEntity<PageInfo<MszRefundInfoVO>> list(PagingRequest pagingRequest, String status) {
+
+        return RespEntity.ok().setResponseContent(mszRefundInfoService.listPage(pagingRequest, status));
+    }
+
+    @GetMapping("/getCountNum")
+    @ApiOperation(value = "查询 待审核/已同意/已拒绝 数量", notes = "查询 待审核/已同意/已拒绝 数量")
+    public RespEntity<MszWithdrawStatusNum> getCountNum() {
+
+        return RespEntity.ok().setResponseContent(mszRefundInfoService.getCountNum());
+    }
+
+
+    @PostMapping("/insert")
+    @ApiOperation(value = "保存MszRefundInfo", notes = "保存MszRefundInfo")
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszRefundInfo mszRefundInfo) {
+        //查租约
+        Wrapper wrapper = new EntityWrapper<MszRefundInfo>();
+        wrapper.eq("tenantId", mszRefundInfo.getTenantId())
+                .eq("landlordId", mszRefundInfo.getLandlordId());
+        MszLease mszLease = mszLeaseService.selectOne(wrapper);
+        //设置值
+        mszRefundInfo.setLeaseId(mszLease.getId());
+        mszRefundInfo.setNo(mszLease.getNo());
+        mszRefundInfo.setDepositPrice(mszRefundInfo.getDepositPrice());
+        mszRefundInfo.setRentPrice(new BigDecimal(0));
+        mszRefundInfo.setTotal(mszRefundInfo.getDepositPrice());
+        //保存押金退款
+        if (!mszRefundInfoService.insert(mszRefundInfo)) {
+            return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping("/update")
+    @ApiOperation(value = "根据ID修改MszRefundInfo", notes = "根据ID修改MszRefundInfo")
+    public RespEntity update(HttpServletRequest request, @RequestBody MszRefundInfo mszRefundInfo) {
+        if (!mszRefundInfoService.updateById(mszRefundInfo)) {
+            return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @PutMapping("/settle")
+    @ApiOperation(value = "退款 -> 结清", notes = "退款 -> 结清")
+    public RespEntity settle(HttpServletRequest request, @RequestBody MszRefundInfo mszRefundInfo) {
+        SysUser user = UserCommon.getCurrentUser();
+        mszRefundInfo.setStatus("1");
+        mszRefundInfo.setFlag("1"); // 结清同意
+        mszRefundInfoService.updateById(mszRefundInfo);
+        // 3.消息提醒
+        // 退款结清时发送给 ——> 房东
+        MszMessage message = new MszMessage();
+        message.setType("3");//退款消息
+        message.setCreateTime(new Date());
+        message.setReceiverId(mszRefundInfo.getLandlordId());
+        LeaseReturnParamVO lease = leaseService.getMszLeaseById(mszRefundInfo.getLeaseId());
+        message.setTitle(lease.getLandlordName()+"您的租约退款已结清");
+        message.setContentText("您的房源"+lease.getNo()+"订单申请退款"+mszRefundInfo.getTotal()+"元，已结清！");
+        messageService.insert(message);
+        // 4.日志
+        sysLogUtil.insertSysLog(request, user.getId(), user.getUsername(), "退款信息->结清同意->失败");
+        return null;
+    }
+
+
+    @PutMapping("/updateStatus")
+    @ApiOperation(value = "同意/拒绝", notes = "同意/拒绝")
+    @LoginRequired
+    @Transactional
+    public RespEntity updateStatus(HttpServletRequest request, @RequestParam Integer id, String status, BigDecimal rentPrice, BigDecimal depositPrice) {
+        SysUser user = UserCommon.getCurrentUser();
+        MszRefundInfo refundInfo = mszRefundInfoService.getDescById(id);
+        refundInfo.setStatus(status);//审核
+        //消息推送
+        LeaseReturnParamVO lease = leaseService.getMszLeaseById(refundInfo.getLeaseId());
+
+        String leaseNo = lease.getNo();//租约编号
+        Integer tenantId = lease.getTenantId();//房客id
+        String tenantName = lease.getTenantName();//房客名称
+        Integer landlordId = lease.getLandlordId();//房东id
+        String landlordName = lease.getLandlordName();//房东名称
+        MszMessage message = new MszMessage();
+        message.setType("3");//退款消息
+        message.setCreateTime(new Date());
+        if (status.equals("1")) {
+            BigDecimal total = depositPrice;
+            refundInfo.setDepositPrice(depositPrice);
+            refundInfo.setTotal(total);
+            refundInfo.setUserId(user.getId());
+            //给房东余额扣钱   are you Ok ?
+            MszWallet landlordWallet = walletService.selectOne(new EntityWrapper<MszWallet>().eq("accountId", landlordId));
+            BigDecimal fee = refundInfo.getTotal();
+            MszWallet tenantWallet = walletService.selectOne(new EntityWrapper<MszWallet>().eq("accountId", tenantId));
+            int i = landlordWallet.getBalance().compareTo(fee);
+            if (i < 0) {
+                // 扣款失败
+                refundInfo.setStatus("3");
+                mszRefundInfoService.updateById(refundInfo);
+                message.setReceiverId(landlordId);
+                message.setTitle(landlordName+"您的房源订单退款时扣款失败");
+                message.setContentText("您的房源"+lease.getNo()+"订单申请退款合计"+total+"元，钱包余额不足扣款失败！");
+                messageService.insert(message);
+                sysLogUtil.insertSysLog(request, user.getId(), user.getUsername(), "退款信息->同意/拒绝->该房东的钱包余额不支持您此次的退款,请通知他及时充值");
+                return RespEntity.badRequest("该房东的钱包余额不支持您此次的退款,请通知他及时充值");
+            } else {
+                refundInfo.setStatus(status);
+                mszRefundInfoService.updateById(refundInfo);
+                //退款审批同意时发送给房客
+                message.setReceiverId(tenantId);
+                MessageTeamplate messageTeamplate = MessageTeamplateUtil.refundInfoSuccessByTenant(tenantName, leaseNo, total);
+                message.setTitle(messageTeamplate.getTitle());
+                message.setContentText(messageTeamplate.getContentText());
+                messageService.insert(message);
+                //退款审批同意时发送给房东
+                MessageTeamplate messageTeamplate1 = MessageTeamplateUtil.refundInfoSuccessByLandlord(landlordName, leaseNo, total);
+                message.setTitle(messageTeamplate1.getTitle());
+                message.setContentText(messageTeamplate1.getContentText());
+                messageService.insert(message);
+                landlordWallet.setBalance(landlordWallet.getBalance().subtract(fee));
+                walletService.updateById(landlordWallet);
+                tenantWallet.setBalance(tenantWallet.getBalance().add(fee));
+                walletService.updateById(tenantWallet);
+                MszRefundInfo desc = mszRefundInfoService.getDescById(id);
+                //修改租约的
+                MszLease lease1 = new MszLease();
+                lease1.setId(refundInfo.getLeaseId());
+                lease1.setIsRefundMoney("0");
+                sysLogUtil.insertSysLog(request, user.getId(), user.getUsername(), "退款信息->同意/拒绝->成功");
+                mszLeaseService.updateById(lease1);
+                return RespEntity.ok().setResponseContent(desc);
+            }
+
+        }
+        if (status.equals("2")) {
+            refundInfo.setStatus(status);
+            //退款审批拒绝时发送给房客
+            BigDecimal TOTAL = refundInfo.getTotal();
+            message.setReceiverId(landlordId);
+            MessageTeamplate messageTeamplate = MessageTeamplateUtil.refundInfoFailureTenant(tenantName, leaseNo, TOTAL);
+            message.setTitle(messageTeamplate.getTitle());
+            message.setContentText(messageTeamplate.getContentText());
+            messageService.insert(message);
+            //退款审批拒绝时发送给房东
+            MessageTeamplate messageTeamplate1 = MessageTeamplateUtil.refundInfoFailureByLandlord(landlordName, leaseNo, TOTAL);
+            message.setTitle(messageTeamplate1.getTitle());
+            message.setContentText(messageTeamplate1.getContentText());
+            messageService.insert(message);
+        }
+        if (!mszRefundInfoService.updateById(refundInfo)) {
+            sysLogUtil.insertSysLog(request, user.getId(), user.getUsername(), "退款信息->同意/拒绝->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, user.getId(), user.getUsername(), "退款信息->同意/拒绝->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszRefundInfo", notes = "根据ID删除MszRefundInfo")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Long id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszRefundInfoService.deleteById(id)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "退款信息->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(), "退款信息->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

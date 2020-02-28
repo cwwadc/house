@@ -1,0 +1,489 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderHistoryMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszOrderHistory">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="leaseId" property="leaseId"/>
+        <result column="roomId" property="roomId"/>
+        <result column="landlordId" property="landlordId"/>
+        <result column="tenantId" property="tenantId"/>
+        <result column="billDay" property="billDay"/>
+        <result column="collectMoneyDay" property="collectMoneyDay"/>
+        <result column="rentPrice" property="rentPrice"/>
+        <result column="paidRentPrice" property="paidRentPrice"/>
+        <result column="depositPrice" property="depositPrice"/>
+        <result column="paidDepositPrice" property="paidDepositPrice"/>
+        <result column="receiveTotal" property="receiveTotal"/>
+        <result column="available" property="available"/>
+        <result column="flag" property="flag"/>
+        <result column="breachPrice" property="breachPrice"/>
+        <result column="endTime" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+        <result column="orgId" property="orgId"/>
+        <result column="payType" property="payType"/>
+    </resultMap>
+
+    <!-- 订单表连接交费项 -->
+    <resultMap id="OrderLeftCharge" type="com.msz.VO.MszOrderInfoVo">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="leaseId" property="leaseId"/>
+        <result column="roomId" property="roomId"/>
+        <result column="landlordId" property="landlordId"/>
+        <result column="tenantId" property="tenantId"/>
+        <result column="billDay" property="billDay"/>
+        <result column="collectMoneyDay" property="collectMoneyDay"/>
+        <result column="schedulePrice" property="schedulePrice"/>
+        <result column="paidSchedulePrice" property="paidSchedulePrice"/>
+        <result column="rentPrice" property="rentPrice"/>
+        <result column="paidRentPrice" property="paidRentPrice"/>
+        <result column="depositPrice" property="depositPrice"/>
+        <result column="paidDepositPrice" property="paidDepositPrice"/>
+        <result column="receiveTotal" property="receiveTotal"/>
+        <result column="paidTotal" property="paidTotal"/>
+        <result column="oweTotal" property="oweTotal"/>
+        <result column="available" property="available"/>
+        <result column="arrearsFlag" property="arrearsFlag"/>
+        <result column="flag" property="flag"/>
+        <result column="breachPrice" property="breachPrice"/>
+        <result column="endTime" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+        <result column="operatorId" property="operatorId"/>
+        <result column="createId" property="createId"/>
+        <result column="tenantName" property="tenantName"/>
+        <result column="operatorName" property="operatorName"/>
+        <collection property="chargeList" ofType="com.msz.model.MszOrderCharge">
+            <id column="chargeId" property="id"/>
+            <result column="mocorderId" property="orderId"/>
+            <result column="mocchargeName" property="chargeName"/>
+            <result column="mocreceiveAmount" property="receiveAmount"/>
+            <result column="mocchargeMonth" property="chargeMonth"/>
+            <result column="moccharge_start_time" property="charge_start_time"/>
+            <result column="moccharge_end_time" property="charge_end_time"/>
+            <result column="mocisDel" property="isDel"/>
+            <result column="moccreateTime" property="createTime"/>
+        </collection>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, leaseId, roomId, landlordId, tenantId, billDay, collectMoneyDay, rentPrice, paidRentPrice, depositPrice, paidDepositPrice, receiveTotal, available, flag, breachPrice, endTime, status, isDel, updateTime, createTime, orgId, payType
+    </sql>
+    <!--  byYearMonthGroup 接口 VO -->
+    <sql id="Pay_Info_VO">
+       DATE_FORMAT(createTime, '%Y年%m月') AS date,sum(total) AS money
+    </sql>
+    <select id="byYearMonthGroup" resultType="java.util.Map">
+        SELECT
+        <include refid="Pay_Info_VO"/>
+        FROM msz_order_history WHERE landlordId = #{landlordId} GROUP BY date ORDER BY date desc
+    </select>
+
+    <select id="byMonthGroup" resultType="com.msz.VO.MszOrderHistoryVO">
+        SELECT m.id, m.tenantId accountId,a.name accountName, m.total amt, m.status, m.updateTime, m.createTime FROM msz_order_history m LEFT JOIN msz_account a on m.tenantId = a.id WHERE landlordId = #{id} and DATE_FORMAT(m.createTime, '%Y年%m月') = #{date}
+    </select>
+
+
+    <select id="findList" resultMap="OrderLeftCharge">
+        SELECT
+        m.id id,
+        m.`no` `no`,
+        m.leaseId leaseId,
+        m.roomId roomId,
+        m.landlordId landlordId,
+        m.tenantId tenantId,
+        m.scheduleId scheduleId,
+        m.billDay billDay,
+        m.collectMoneyDay collectMoneyDay,
+        m.schedulePrice schedulePrice,
+        m.paidSchedulePrice paidSchedulePrice,
+        m.receiveTotal receiveTotal,
+        m.rentPrice rentPrice,
+        m.paidRentPrice paidRentPrice,
+        m.depositPrice depositPrice,
+        m.paidDepositPrice paidDepositPrice,
+        m.paidTotal paidTotal,
+        m.oweTotal oweTotal,
+        m.available available,
+        m.arrearsFlag arrearsFlag,
+        m.flag flag,
+        m.breachPrice breachPrice,
+        m.endTime endTime,
+        m.`status` `status`,
+        m.isDel isDel,
+        m.updateTime updateTime,
+        m.createTime createTime,
+        m.orgId orgId,
+        m.operatorId operatorId,
+        m.createId createId,
+        a.`NAME` tenantName,
+        su.trueName operatorName,
+        moc.id chargeId,
+        moc.order_id mocorderId,
+        moc.charge_name mocchargeName,
+        moc.receive_amount mocreceiveAmount,
+        moc.charge_start_time moccharge_start_time,
+        moc.charge_end_time moccharge_end_time,
+        moc.is_del mocisDel,
+        moc.create_time moccreateTime,
+        moc.available mocavailable
+        from msz_order_history m
+        LEFT JOIN msz_account a ON m.tenantId=a.id
+        LEFT JOIN sys_user su ON m.operatorId=su.id
+        LEFT JOIN msz_lease l ON m.leaseId = l.id
+        LEFT JOIN msz_order_charge moc ON m.id = moc.order_id
+        where m.isDel = '0'
+        <if test="status != null and status != ''">
+            and m.status = #{status}
+        </if>
+        <if test="endTimeBegin != null and endTimeBegin != '' and endTimeEnd != null and endTimeEnd != ''">
+            and m.endTime between #{endTimeBegin} and #{endTimeEnd}
+        </if>
+        <if test="tenantName != null and tenantName != ''">
+            and a.name like "%"#{tenantName}"%"
+        </if>
+        <if test="orgId != null and orgId != ''">
+            and m.orgId = #{orgId}
+        </if>
+        <if test="billDay != null and billDay != ''">
+            and l.billDay = #{billDay}
+        </if>
+    </select>
+
+
+    <select id="incomeStatement" resultType="com.msz.VO.IncomeListVo">
+        SELECT
+	      mo.id AS orgId,
+	      mo.`code`,
+		  mo.`name`,
+		  mo.stafId AS userId,
+		  mo.receiveTotal,
+		  mo.paidTotal,
+		  mo.oweTotal,
+	      su.trueName
+        FROM
+	      (
+		    SELECT
+			  so.id,
+			  so.`code`,
+			  so.`name`,
+			  so.stafId,
+			  SUM(moh.receiveTotal) AS receiveTotal,
+			  SUM(moh.paidTotal) AS paidTotal,
+			  SUM(moh.oweTotal) AS oweTotal
+		    FROM
+			  msz_order_history moh,
+			  sys_org so
+		    WHERE
+			  moh.orgId = so.id
+			  AND moh.isDel='0'
+			  <if test="name!=null and name!=''">
+                  AND so.`name` = #{name}
+              </if>
+              <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+			      AND DATE_FORMAT(moh.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+              </if>
+		    GROUP BY
+			  so.id
+          UNION ALL
+		    SELECT
+              org.id,
+              org.`code`,
+              org.`name`,
+              org.stafId,
+			  SUM(moi.receiveTotal) AS receiveTotal,
+			  SUM(moi.paidTotal) AS paidTotal,
+			  SUM(moi.oweTotal) AS oweTotal
+		    FROM
+			  msz_order_info moi,
+			  sys_org org
+		    WHERE
+			  moi.orgId = org.id
+			  AND moi.status = 1
+              AND moi.isDel='0'
+              <if test="name!=null and name!=''">
+                  AND org.`name` = #{name}
+              </if>
+              <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+                  AND DATE_FORMAT(moi.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+              </if>
+		    GROUP BY
+              org.id
+	      ) mo LEFT JOIN sys_user su ON mo.stafId=su.id
+          LIMIT #{start},#{size}
+    </select>
+
+
+    <select id="incomeStatementSums" resultType="java.lang.Integer">
+        SELECT
+          COUNT(1)
+        FROM
+        (
+        SELECT
+        so.id,
+        so.`code`,
+        so.`name`,
+        so.stafId,
+        SUM(moh.receiveTotal) AS receiveTotal,
+        SUM(moh.paidTotal) AS paidTotal,
+        SUM(moh.oweTotal) AS oweTotal
+        FROM
+        msz_order_history moh,
+        sys_org so
+        WHERE
+        moh.orgId = so.id
+        AND moh.isDel='0'
+        <if test="name!=null and name!=''">
+            AND so.`name` = #{name}
+        </if>
+        <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+            AND DATE_FORMAT(moh.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+        </if>
+        GROUP BY
+        so.id
+        UNION ALL
+        SELECT
+        org.id,
+        org.`code`,
+        org.`name`,
+        org.stafId,
+        SUM(moi.receiveTotal) AS receiveTotal,
+        SUM(moi.paidTotal) AS paidTotal,
+        SUM(moi.oweTotal) AS oweTotal
+        FROM
+        msz_order_info moi,
+        sys_org org
+        WHERE
+        moi.orgId = org.id
+        AND moi.status = 1
+        AND moi.isDel='0'
+        <if test="name!=null and name!=''">
+            AND org.`name` = #{name}
+        </if>
+        <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+            AND DATE_FORMAT(moi.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+        </if>
+        GROUP BY
+        org.id
+        ) mo LEFT JOIN sys_user su ON mo.stafId=su.id
+    </select>
+
+
+    <select id="incomeStatement2" resultType="com.msz.VO.IncomeListVo">
+        SELECT
+			DATE_FORMAT(moh.createTime,'%Y-%c') AS groupTime,
+			SUM(moh.receiveTotal) AS receiveTotal,
+			SUM(moh.paidTotal) AS paidTotal,
+			SUM(moh.oweTotal) AS oweTotal
+		FROM
+			msz_order_history moh,
+			sys_org so
+		WHERE
+			moh.orgId = so.id
+            AND moh.isDel = '0'
+            <if test="name!=null and name!=''">
+                AND so.`name` = #{name}
+            </if>
+            <choose>
+                <when test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+                    AND DATE_FORMAT(moh.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+                </when>
+                <otherwise>
+                    AND DATE_FORMAT(moh.createTime,'%Y')= DATE_FORMAT(NOW(), '%Y')
+                </otherwise>
+            </choose>
+		GROUP BY
+			DATE_FORMAT(moh.createTime,'%Y-%c')
+    UNION ALL
+		SELECT
+			DATE_FORMAT(moi.createTime,'%Y-%c') AS groupTime,
+			SUM(moi.receiveTotal) AS receiveTotal,
+			SUM(moi.paidTotal) AS paidTotal,
+			SUM(moi.oweTotal) AS oweTotal
+		FROM
+			msz_order_info moi,
+			sys_org org
+		WHERE
+			moi.orgId = org.id
+			AND moi.status = 1
+            AND moi.isDel='0'
+            <if test="name!=null and name!=''">
+                AND org.`name` = #{name}
+            </if>
+            <choose>
+                <when test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+                    AND DATE_FORMAT(moi.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+                </when>
+                <otherwise>
+                    AND DATE_FORMAT(moi.createTime,'%Y')= DATE_FORMAT(NOW(), '%Y')
+                </otherwise>
+            </choose>
+		GROUP BY
+			DATE_FORMAT(moi.createTime,'%Y-%c')
+    </select>
+
+    <select id="incomeMonthly" resultType="com.msz.model.MszOrderHistory">
+        SELECT
+			moh.no,
+			moh.paidTotal,
+			moh.createTime
+		FROM
+			msz_order_history moh,
+			sys_org so
+		WHERE
+			moh.orgId = so.id
+			AND moh.isDel='0'
+			AND DATE_FORMAT(moh.createTime,'%Y-%c')=#{groupTime}
+			AND so.orgId=#{orgId}
+    UNION ALL
+		SELECT
+			moi.no,
+			moi.paidTotal,
+			moi.createTime
+		FROM
+			msz_order_info moi,
+			sys_org org
+		WHERE
+			moi.orgId = org.id
+			AND moi.status = 1
+			AND moi.isDel='0'
+			AND DATE_FORMAT(moh.createTime,'%Y-%c')=#{groupTime}
+			AND so.orgId=#{orgId}
+    </select>
+
+
+    <select id="incomeStatementMessage" resultType="com.msz.model.MszOrderHistory">
+        SELECT
+	      mo.id,
+          mo.scheduleId,
+		  mo.rentPrice,
+		  mo.paidRentPrice,
+		  mo.depositPrice,
+		  mo.paidDepositPrice,
+		  mo.collectMoneyDay,
+		  mo.receiveTotal,
+		  mo.paidTotal,
+		  mo.oweTotal,
+		  mo.tenantId,
+	      ma.name AS tenantName,
+	      moc.receive_amount AS otherPrice,
+	      mo.payType
+        FROM
+	      (SELECT
+			moh.id,
+            moh.scheduleId,
+			moh.rentPrice,
+			moh.paidRentPrice,
+			moh.depositPrice,
+			moh.paidDepositPrice,
+			moh.collectMoneyDay,
+			moh.receiveTotal,
+			moh.paidTotal,
+			moh.oweTotal,
+			moh.tenantId,
+			moh.payType
+		  FROM
+			msz_order_history moh,
+			sys_org so
+		  WHERE
+			moh.orgId = so.id
+			AND moh.isDel='0'
+			<if test="orgId!=null and orgId!=''">
+			  AND so.id = #{orgId}
+            </if>
+        UNION ALL
+		  SELECT
+			moi.id,
+            moi.scheduleId,
+			moi.rentPrice,
+			moi.paidRentPrice,
+			moi.depositPrice,
+			moi.paidDepositPrice,
+			moi.collectMoneyDay,
+			moi.receiveTotal,
+			moi.paidTotal,
+			moi.oweTotal,
+			moi.tenantId,
+			moi.payType
+		  FROM
+			msz_order_info moi,
+			sys_org org
+		  WHERE
+			moi.orgId = org.id
+			AND moi.status = 1
+			AND moi.isDel = '0'
+            <if test="orgId!=null and orgId!=''">
+			  AND org.id = #{orgId}
+			</if>
+	      ) mo
+	      LEFT JOIN msz_account ma ON mo.tenantId=ma.id AND ma.type=2
+	      LEFT JOIN (SELECT SUM(charge.receive_amount) receive_amount, charge.order_id FROM msz_order_charge charge GROUP BY order_id) moc ON mo.id=moc.order_id
+    </select>
+
+
+    <select id="selectexportExcelData" resultType="com.msz.model.MszOrderHistory">
+        SELECT
+          mo.rentPrice,
+          mo.paidRentPrice,
+          mo.depositPrice,
+          mo.paidDepositPrice,
+          mo.receiveTotal,
+          mo.paidTotal,
+          mo.oweTotal,
+          ma.name AS tenantName
+        FROM
+          (SELECT
+            so.rentPrice,
+            so.paidRentPrice,
+            so.depositPrice,
+            so.paidDepositPrice,
+            so.receiveTotal,
+            so.paidTotal,
+            so.oweTotal
+          FROM
+            msz_order_history moh,
+            sys_org so
+          WHERE
+            moh.orgId = so.id
+            AND moh.isDel = '0'
+            <if test="id!=null and id!=''">
+                AND so.id = #{id}
+            </if>
+            <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+                AND DATE_FORMAT(moh.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+            </if>
+        UNION ALL
+            SELECT
+              org.rentPrice,
+              org.paidRentPrice,
+              org.depositPrice,
+              org.paidDepositPrice,
+              org.receiveTotal,
+              org.paidTotal,
+              org.oweTotal
+            FROM
+              msz_order_info moi,
+              sys_org org
+            WHERE
+              moi.orgId = org.id
+              AND moi.status = 1
+              AND moi.isDel = '0'
+              <if test="name!=null and name!=''">
+                  AND org.`name` = #{name}
+              </if>
+              <if test="startTime!=null and startTime!='' and endTime!=null and endTime!=''">
+                  AND DATE_FORMAT(moi.createTime,'%Y-%c-%e') BETWEEN #{startTime} AND #{endTime}
+              </if>
+        ) mo LEFT JOIN msz_account ma ON mo.tenantId=ma.id AND ma.type=2
+    </select>
+
+</mapper>

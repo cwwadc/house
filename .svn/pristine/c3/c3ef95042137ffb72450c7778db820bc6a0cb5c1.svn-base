@@ -1,0 +1,161 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.github.pagehelper.PageInfo;
+import com.msz.VO.MessageParamVO;
+import com.msz.VO.SystemMessageVO;
+import com.msz.annotation.CurrentUser;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszMessage;
+import com.msz.model.SysUser;
+import com.msz.service.MszMessageService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+
+
+/**
+ * <p>
+ * 消息 前端控制器
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Api(value = "/msz-messages", description = "消息 接口; Responseble:cww")
+@RestController
+@RequestMapping("/msz-messages")
+public class MszMessageController {
+
+    /**
+     * id  Integer
+     * <p>
+     * 发布信息的账号  promulgatorId  Integer
+     * <p>
+     * 接收信息的账号  receiverId  Integer
+     * <p>
+     * 消息类型，0：系统消息，1：租约消息  type  String
+     * <p>
+     * 标题  title  String
+     * <p>
+     * 文本内容  contentText  String
+     * <p>
+     * 关联ID  relId  Integer
+     * <p>
+     * 0未读1已读  isRead  Integer
+     * <p>
+     * isDel  String
+     * <p>
+     * 更新时间  updateTime  Date
+     * <p>
+     * 消息创建时间  createTime  Date
+     */
+    @Autowired
+    private MszMessageService mszMessageService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "isUser", value = "是否是 sys_user表的消息 0不是 1是", required = true, paramType = "query")
+    })
+    @GetMapping("getByAccountId/{id}")
+    @ApiOperation(value = "按照用户Id翻页查找所有消息记录-------小程序(房东,业务员)@Author=Maoyy", notes = "按照用户Id翻页查找所有消息记录-------小程序(房东,业务员)@Author=Maoyy")
+    public RespEntity<MszMessage> getMessageById(PagingRequest pagingRequest, @PathVariable Integer id, @RequestParam(required = true) String isUser) {
+        return RespEntity.ok().setResponseContent(mszMessageService.listPage(pagingRequest, new EntityWrapper<MszMessage>().eq("receiverId", id).eq("isUser", isUser).orderBy("createTime", false)));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "isRead", value = "是否已读 0.未读 1.已读", required = true, paramType = "query")
+    })
+    @GetMapping("getByUserId/{id}")
+    @ApiOperation(value = "按照用户Id查找所有消息记录-------PC @Author=Maoyy", notes = "按照用户Id查找所有消息记录-------PC @Author=Maoyy")
+    public RespEntity<SystemMessageVO> getByUserId(@PathVariable Integer id, @RequestParam(value = "isRead", required = true) String isRead) {
+        return RespEntity.ok().setResponseContent(mszMessageService.listPage(id, isRead));
+    }
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "查看", notes = "查看")
+    public RespEntity<MszMessage> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszMessageService.selectById(id));
+
+    }
+
+    @PostMapping("/insert")
+    @ApiOperation(value = "新增消息", notes = "新增消息")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request,  @RequestBody MszMessage mszMessage) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszMessageService.insert(mszMessage)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->新增->失败");
+            return RespEntity.badRequest("新增失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->新增->成功");
+        return RespEntity.ok("新增成功");
+    }
+
+
+    @PutMapping("/update")
+    @ApiOperation(value = "根据ID修改MszMessage", notes = "根据ID修改MszMessage")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszMessage mszMessage) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszMessageService.updateById(mszMessage)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->更新->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+    @PutMapping("/updateIsDel/{id}")
+    @ApiOperation(value = "逻辑删除", notes = "逻辑删除")
+    @LoginRequired
+    public RespEntity updateIsDel(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        MszMessage mszMessage = new MszMessage();
+        mszMessage.setId(id);
+        mszMessage.setIsDel("1");
+        if (!mszMessageService.updateById(mszMessage)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszMessage", notes = "根据ID删除MszMessage")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszMessageService.deleteById(id)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"消息->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+    @GetMapping("/getMszMessageNum")
+    @ApiOperation(value = "后台系统已处理/未处理数量", notes = "后台系统已处理/未处理数量")
+    @LoginRequired
+    public RespEntity<MessageParamVO> getMszMessageNum(@CurrentUser SysUser user) {
+
+        return RespEntity.ok().setResponseContent(mszMessageService.getMszMessageNum(user));
+
+    }
+
+
+}

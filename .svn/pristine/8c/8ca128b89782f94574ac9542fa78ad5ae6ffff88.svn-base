@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszAccountMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszAccount">
+        <id column="id" property="id"/>
+        <result column="tel" property="tel"/>
+        <result column="pwd" property="pwd"/>
+        <result column="name" property="name"/>
+        <result column="logo" property="logo"/>
+        <result column="type" property="type"/>
+        <result column="state" property="state"/>
+        <result column="sex" property="sex"/>
+        <result column="phone" property="phone"/>
+        <result column="idCard" property="idCard"/>
+        <result column="address" property="address"/>
+        <result column="imgIdcard1" property="imgIdcard1"/>
+        <result column="imgIdcard2" property="imgIdcard2"/>
+        <result column="openId" property="openId"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, tel, pwd, name, logo, type, state, sex, phone, idCard, address, imgIdcard1, imgIdcard2, openId, isDel, updateTime, createTime
+    </sql>
+
+    <!-- leaseByAccount -->
+    <sql id="Lease_By_Account">
+        ma.id id, ma.tel tel, ma.pwd pwd, ma.name name, ma.logo logo, ma.type type, ma.state state, ma.sex sex, ma.phone phone, ma.idCard idCard, ma.address address, ma.imgIdcard1 imgIdcard1, ma.imgIdcard2 imgIdcard2, ma.openId openId, ma.isDel isDel, ma.updateTime updateTime, ma.createTime createTime
+    </sql>
+
+    <!-- leaseByAccount -->
+    <sql id="Get_Guests_VO">
+		ma.id id,
+        ma.tel tel,
+        ma.idCard idCard,
+        ma.state state,
+        s.create_time createTime,
+        mr.orgId orgId,
+        ma.imgIdcard1 imgIdcard1,
+        ma.imgIdcard2 imgIdcard2,
+        o.`name` orgName,
+        mr.community community,
+        ma.phone phone,
+        ma.sex sex,
+        ma.`name` `name`,
+        mr.houseNumber houseNumber,
+        mr.room room,
+        mr.address,
+        su.trueName salesmanName,
+        s.id scheduleId
+    </sql>
+
+    <select id="leaseByAccount" resultType="java.util.Map">
+        select
+        <include refid="Lease_By_Account"/>
+        FROM
+        msz_lease ml
+        LEFT JOIN msz_account ma ON ml.tenantId = ma.id
+        WHERE
+        ml.userId = #{id}
+        GROUP BY ma.id
+    </select>
+
+    <select id="getGuestsListUnsigned" resultType="com.msz.VO.GuestsVO" parameterType="com.msz.VO.GuestsVO">
+        SELECT ma.* FROM msz_account ma
+        WHERE 1=1
+        <if test="state==2">
+            AND ma.state=0
+        </if>
+        <if test="state==3">
+            AND ma.state=1
+        </if>
+        -- 由于客户需求所有房客信息共用(只需要不加这个条件就行)
+        <if test="orgId != null and orgId != ''">
+            AND ma.orgId = #{orgId}
+        </if>
+        <if test="name != null and name != ''">
+            AND ma.`name` LIKE CONCAT('%', #{name}, '%') OR ma.tel LIKE CONCAT('%', #{name}, '%')
+        </if>
+        AND ma.type = 2
+        AND ma.id NOT IN (
+        SELECT
+        tenantId
+        FROM
+        msz_lease
+        WHERE
+        `status` = 1
+        )
+        GROUP BY ma.id
+    </select>
+
+    <select id="getGuestsList" resultType="java.util.Map" parameterType="com.msz.VO.GuestsVO">
+        SELECT
+        ma.id id,
+        ma.tel tel,
+        ma.idCard idCard,
+        ma.state state,
+        mr.orgId orgId,
+        ma.imgIdcard1 imgIdcard1,
+        ma.imgIdcard2 imgIdcard2,
+        o.`name` orgName,
+        mr.community community,
+        ma.phone phone,
+        ma.sex sex,
+        ma.`name` `name`,
+        mr.houseNumber houseNumber,
+        mr.room room,
+        mr.address,
+        ml.createTime createTime,
+        su.trueName salesmanName
+        FROM
+        msz_account ma
+        LEFT JOIN msz_lease ml ON ml.tenantId=ma.id
+        LEFT JOIN sys_user su ON ml.userId = su.id
+        LEFT JOIN msz_room mr ON ml.roomId = mr.id
+        LEFT JOIN sys_org o ON o.id = mr.orgId
+        WHERE ma.state=0
+        <if test="orgId != null and orgId != ''">
+            AND ma.orgId = #{orgId}
+        </if>
+        <if test="userId != null and userId != ''">
+            AND ml.userId = #{userId}
+        </if>
+        <if test="name != null and name != ''">
+            AND ma.`name` LIKE CONCAT('%', #{name}, '%') OR ma.tel LIKE CONCAT('%', #{name}, '%')
+        </if>
+        AND ma.type = 2
+        AND ma.id IN (
+        SELECT
+        tenantId
+        FROM
+        msz_lease
+        WHERE
+        `status` = 1
+        )
+        GROUP BY ma.id
+    </select>
+
+    <select id="getUnsignedGuests" resultType="java.util.Map" parameterType="com.msz.VO.GuestsVO">
+        SELECT
+        <include refid="Get_Guests_VO"/>
+        FROM
+        msz_account ma
+        LEFT JOIN msz_schedule s ON s.tenant_id = ma.id
+        LEFT JOIN sys_user su ON s.user_id = su.id
+        LEFT JOIN msz_room mr ON s.room_id = mr.id
+        LEFT JOIN sys_org o ON o.id = mr.orgId
+        WHERE ma.state=0
+        <if test="orgId != null and orgId != ''">
+            AND ma.orgId = #{orgId}
+        </if>
+        <if test="userId != null and userId != ''">
+            AND s.user_id = #{userId}
+        </if>
+        <if test="name != null and name != ''">
+            AND ma.`name` LIKE CONCAT('%', #{name}, '%') OR ma.tel LIKE CONCAT('%', #{name}, '%')
+        </if>
+        AND ma.type = 2
+        AND ma.id IN (
+        SELECT
+        tenant_id AS "tenantId"
+        FROM
+        msz_schedule
+        WHERE
+        is_del = '0'
+        GROUP BY
+        tenant_id
+        )
+        GROUP BY ma.id
+    </select>
+
+    <select id="getGuestsNum" resultType="java.lang.Integer">
+        SELECT
+        COUNT(*)
+        FROM
+        msz_account a
+        WHERE a.type = 2
+        AND a.state = 0
+        <if test="orgId != null and orgId != ''">
+            AND a.orgId = #{orgId}
+        </if>
+        AND a.id IN (
+        SELECT
+        tenantId
+        FROM
+        msz_lease
+        WHERE
+        `status` = 1
+        )
+    </select>
+
+    <select id="getUnsignedNum" resultType="java.lang.Integer">
+        SELECT
+        COUNT(*)
+        FROM
+        msz_account a
+        WHERE a.type = 2
+        AND a.state = #{state}
+        <if test="orgId != null and orgId != ''">
+            AND a.orgId = #{orgId}
+        </if>
+        AND a.id NOT IN (
+        SELECT
+        tenantId
+        FROM
+        msz_lease
+        WHERE
+        `status` = 1
+        )
+    </select>
+
+    <select id="getTenantByTel" resultType="com.msz.model.MszAccount" parameterType="com.msz.model.MszAccount">
+        <!--SELECT a.* FROM msz_account a
+        WHERE a.state=0 AND a.type = 2
+        <if test="tel != null and tel != ''">
+            AND a.tel LIKE "%" #{tel} "%"
+        </if>
+        <if test="orgId != null and orgId != ''">
+            AND a.orgId = #{orgId}
+        </if>
+        AND a.id NOT IN (
+            SELECT
+            tenantId
+            FROM
+            msz_lease
+            WHERE
+            `status` = 1
+            UNION
+            SELECT
+            tenant_id
+            FROM
+            msz_schedule
+            WHERE
+            `is_del` = 0
+        )
+        GROUP BY a.id
+-->
+        SELECT
+        *
+        FROM
+        msz_account ma
+        WHERE
+        ma.type = 2
+        AND ma.state = 0
+        AND ma.phone LIKE "%" #{tel} "%"
+        AND	ma.id NOT IN (
+        SELECT
+        ml.tenantId
+        FROM
+        msz_lease ml
+        WHERE ml.`status`=1
+        )
+        AND ma.id NOT IN (
+        SELECT
+        CASE WHEN ISNULL(ms.tenant_id) then -1 else ms.tenant_id END
+        FROM msz_schedule ms
+        WHERE ms.is_del=0
+        )
+    </select>
+
+    <select id="selectAllTenant" resultType="com.msz.model.MszAccount">
+        SELECT
+            ma.*
+        FROM
+            msz_account ma
+        WHERE
+            ma.id NOT IN (SELECT tenantId FROM msz_lease WHERE `status` = 1 OR `status` = 0)
+            and ma.id not in (SELECT tenant_id FROM msz_schedule)
+            and ma.type = 2
+    </select>
+</mapper>

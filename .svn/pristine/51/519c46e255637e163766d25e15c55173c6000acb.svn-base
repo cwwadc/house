@@ -1,0 +1,68 @@
+package com.msz.service;
+
+import com.baomidou.mybatisplus.service.IService;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.msz.VO.HouseVO;
+import com.msz.VO.TelHouseVO;
+import com.msz.VO.WeHouseDataVO;
+import com.msz.common.PagingRequest;
+import com.msz.model.MszHouse;
+import com.msz.model.MszRoom;
+import com.msz.model.SysUser;
+
+import java.util.List;
+
+/**
+ * <p>
+ * 服务类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-09-17
+ */
+public interface MszHouseService extends IService<MszHouse> {
+
+    PageInfo<MszHouse> listPage(PagingRequest pagingRequest, Wrapper wrapper);
+
+    /**
+     * @Author Maoyy
+     * @Description 查询该栋房子有哪些房间
+     * @Date 17:22 2019/9/17
+     **/
+    PageInfo<HouseVO> byRoom(SysUser user, Wrapper wrapper);
+    /**
+    * @Author Maoyy
+    * @Description 查询楼栋
+    * @Date 11:06 2019/11/6
+    **/
+    List<MszHouse> getHouse(SysUser user, Wrapper wrapper);
+
+    /**
+     * @Author Maoyy
+     * @Description 插入数据并返回主键
+     * @Date 9:39 2019/9/20
+     **/
+    Integer insertHouseGetId(MszHouse mszHouse);
+
+    /**
+     * @Author Maoyy
+     * @Description 根据层与间添加房间
+     * @Date 10:32 2019/9/20
+     **/
+    boolean insertRoom(MszRoom mszRoom, MszHouse house, Integer houseNumber, Integer roomNumber);
+
+    /**
+    * @Author Maoyy
+    * @Description 小程序添加楼栋页数据
+    * @Date 16:54 2019/9/25
+    **/
+    List<TelHouseVO> telHouse(Integer id);
+
+    /**
+    * @Author Maoyy
+    * @Description 小程序首页查看房源
+    * @Date 20:23 2019/9/25
+    **/
+    List<WeHouseDataVO> getHouseData(Integer id);
+}

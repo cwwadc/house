@@ -1,0 +1,21 @@
+package com.msz.VO;
+
+import com.msz.controller.MszLeaseChargeController;
+import com.msz.model.MszLease;
+import com.msz.model.MszLeaseCharge;
+import com.msz.model.MszSchedule;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+@Data
+public class LeaseParamVO {
+
+    private List<MszLeaseCharge> leaseChargeList;//其它收费项
+
+    private MszLease lease;//租约信息
+
+}

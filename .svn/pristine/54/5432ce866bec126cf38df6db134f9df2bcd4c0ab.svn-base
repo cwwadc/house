@@ -1,0 +1,415 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.msz.VO.*;
+import com.msz.annotation.CurrentUser;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.model.MszAccount;
+import com.msz.model.MszWallet;
+import com.msz.model.SysOrg;
+import com.msz.model.SysUser;
+import com.msz.service.MszAccountService;
+import com.msz.service.MszWalletService;
+import com.msz.service.SysOrgService;
+import com.msz.service.SysUserService;
+import com.msz.util.MD5Util;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+import java.util.UUID;
+
+
+/**
+ * <p>
+ * 用户信息 前端控制器
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Api(value = "/msz-accounts", description = "用户信息 接口; Responseble:cww")
+@RestController
+@RequestMapping("/msz-accounts")
+public class MszAccountController {
+
+    /**
+     * id  Integer
+     * <p>
+     * 账户  tel  String
+     * <p>
+     * 登录密码  pwd  String
+     * <p>
+     * 姓名  name  String
+     * <p>
+     * 头像  logo  String
+     * <p>
+     * 账号类型：1房东，2房客  type  String
+     * <p>
+     * 状态：0正常  state  String
+     * <p>
+     * 性别  sex  String
+     * <p>
+     * 联系电话  phone  String
+     * <p>
+     * 身份证号  idCard  String
+     * <p>
+     * 联系地址  address  String
+     * <p>
+     * 身份证照片正面  imgIdcard1  String
+     * <p>
+     * 身份证照片正面  imgIdcard2  String
+     * <p>
+     * 微信关联ID  openId  String
+     * <p>
+     * 是否删除  isDel  String
+     * <p>
+     * 更新时间  updateTime  Date
+     * <p>
+     * 生成时间  createTime  Date
+     */
+    @Autowired
+    private MszAccountService mszAccountService;
+    @Autowired
+    private MszWalletService mszWalletService;
+    @Autowired
+    private SysOrgService sysOrgService;
+    @Autowired
+    private SysUserService sysUserService;
+    @Autowired
+    private MszWalletService walletService;
+
+    @PostMapping("login")
+    @ApiOperation(value = "登录-------小程序(房东)@Author=Maoyy", notes = "登录-------小程序(房东)@Author=Maoyy")
+    public RespEntity<MszAccount> login(@RequestParam(value = "username", required = true) String username, @RequestParam(value = "pwd", required = true) String pwd, @RequestParam String openid) throws Exception {
+        WeProgramLoginVO vo = new WeProgramLoginVO();
+        vo.setLogin(false);
+        MszAccount acc = mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("tel", username).eq("type", "1"));
+        //判断是否为空
+        if (acc == null) {
+            vo.setLogin(false);
+            return RespEntity.badRequest("该账号不存在").setResponseContent(vo);
+        }
+        if (MD5Util.verify(acc.getPwd(), MD5Util.md5(username, pwd, new SimpleDateFormat("yyyyMMddHHmmss").format(acc.getCreateTime())))) {
+            if (!acc.getState().equals("0")) {
+                return RespEntity.badRequest("您的账号已被禁用").setResponseContent(vo);
+            }
+            acc.setOpenId(openid);
+            if (openid != null) {
+                mszAccountService.updateById(acc);
+            }
+            acc.setPwd(null);
+            vo.setObj(acc);
+            vo.setLogin(true);
+            return RespEntity.ok().setResponseContent(vo);
+        }
+        return RespEntity.badRequest("该账号不存在").setResponseContent(vo);
+    }
+
+    @PostMapping("client/login")
+    @ApiOperation(value = "登录-------小程序(房客)@Author=Maoyy", notes = "登录-------小程序(房客)@Author=Maoyy")
+    public RespEntity<MszAccount> clientLogin(UserInfoReceive userInfo) throws Exception {
+        MszAccount acc = mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("openId", userInfo.getOpenId()).eq("type", "2"));
+        if (acc == null) {
+            MszAccount insAcc = new MszAccount();
+            insAcc.setPwd(null);
+            insAcc.setName(userInfo.getNickName());
+            insAcc.setLogo(userInfo.getAvatarUrl());
+            insAcc.setType("2");
+            insAcc.setSex(userInfo.getGender().equals("1") ? "男" : "女");
+            insAcc.setOpenId(userInfo.getOpenId());
+            insAcc.setCreateTime(new Date());
+            insAcc.setTel(UUID.randomUUID().toString().substring(1, 9));
+            insAcc.setPwd(UUID.randomUUID().toString().substring(1, 9));
+            if (!mszAccountService.insert(insAcc)) {
+                return RespEntity.badRequest("登录失败");
+            } else {
+                acc = mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("openId", userInfo.getOpenId()));
+                MszWallet wallet = new MszWallet();
+                wallet.setAccountId(acc.getId());
+                wallet.setBalance(new BigDecimal(0));
+                wallet.setPwd("000000");
+                wallet.setFrozen(new BigDecimal(0));
+                mszWalletService.insert(wallet);
+                return RespEntity.ok("登录成功").setStatusCode("200").setResponseContent(insAcc);
+            }
+        }
+        if (!acc.getState().equals("0")) {
+            return RespEntity.badRequest("登录失败,您的账号已被禁用");
+        }
+        return RespEntity.ok("登录成功").setResponseContent(acc);
+    }
+
+    @PostMapping("salesmanLogin")
+    @ApiOperation(value = "登录-------小程序(业务员)@Author=Maoyy", notes = "登录-------小程序(业务员)@Author=Maoyy")
+    public RespEntity<SysUser> salesmanLogin(@RequestParam(value = "username", required = true) String username, @RequestParam(value = "pwd", required = true) String pwd) throws Exception {
+        WeProgramSalesmanLoginVO vo = new WeProgramSalesmanLoginVO();
+        vo.setLogin(false);
+        SysUser user = sysUserService.selectOne(new EntityWrapper<SysUser>().eq("username", username).eq("type", "2").eq("state", "0"));
+        //判断是否为空
+        if (user == null) {
+            vo.setLogin(false);
+            return RespEntity.ok().setResponseContent(vo);
+        }
+        if (MD5Util.verify(user.getPassword(), MD5Util.md5(username, pwd, new SimpleDateFormat("yyyyMMddHHmmss").format(user.getCreateTime())))) {
+            user.setPassword(null);
+            vo.setObj(user);
+            vo.getObj().setOrgName(sysOrgService.selectOne(new EntityWrapper<SysOrg>().eq("id", vo.getObj().getOrgId())).getName());
+            vo.setLogin(true);
+            return RespEntity.ok().setResponseContent(vo);
+        }
+        return RespEntity.ok().setResponseContent(vo);
+    }
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszAccount", notes = "根据id获取单个MszAccount")
+    public RespEntity<MszAccount> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszAccountService.selectById(id));
+    }
+
+    @GetMapping("/getMszLease")
+    @ApiOperation(value = "根据客户id查询租约信息", notes = "根据客户id查询租约信息")
+    public RespEntity<MszAccount> getMszLease(Integer id, String status) {
+        return RespEntity.ok().setResponseContent(mszAccountService.getMszLeaseByTenantId(id, status));
+
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+    })
+    @GetMapping("/getMszRoomByLandlordId")
+    @ApiOperation(value = "根据房东id查询房源列表", notes = "根据房东id查询房源列表")
+    public RespEntity<MszAccount> getMszRoomByLandlordId(PagingRequest pagingRequest, Integer landlordId) {
+        return RespEntity.ok().setResponseContent(mszAccountService.getMszRoomByLandlordId(pagingRequest, landlordId));
+
+    }
+
+    @GetMapping("/getMszAccountByTel")
+    @ApiOperation(value = "手机号模糊查询房东列表", notes = "手机号模糊查询房东列表")
+    public RespEntity<MszAccount> getMszAccountByTel(
+            String tel) {
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        wrapper.like("tel", tel);
+        wrapper.eq("type", "1");
+        wrapper.eq("state", "0");
+        return RespEntity.ok().setResponseContent(mszAccountService.selectList(wrapper));
+    }
+
+    @GetMapping("/getTenantByTel")
+    @ApiOperation(value = "根据账户tel电话查询没有签约的房客", notes = "根据账户tel电话查询没有签约的房客")
+    @LoginRequired
+    public RespEntity<MszAccount> getTenantByTel(@CurrentUser SysUser user, String tel) {
+
+        return RespEntity.ok().setResponseContent(mszAccountService.getTenantByTel(tel, user));
+    }
+
+    @GetMapping("leaseByAccount/{id}")
+    @ApiOperation(value = "查询与业务员签约的客户-------小程序(业务员)@Author=Maoyy", notes = "查询与业务员签约的客户-------小程序(业务员)@Author=Maoyy")
+    public RespEntity<MszAccount> leaseByAccount(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszAccountService.leaseByAccount(id));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "name", value = "姓名(模糊查询)"),
+            @ApiImplicitParam(name = "type", value = "账号类型：1房东，2房客"),
+            @ApiImplicitParam(name = "state", value = "状态：0正常")
+    })
+    @ApiOperation(value = "分页查询Account-------PC(PC端的房东列表)@Update=Maoyy", notes = "分页查询Account-------小程序(PC端的房东列表)@Update=Maoyy")
+    @GetMapping("/getMszAccountList")
+    public RespEntity<PageInfo<MszAccount>> list(PagingRequest pagingRequest, MszAccountWhereReceive where) {
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        if (where.getName() != null && !where.getName().isEmpty()) {
+            wrapper.like("name", where.getName());
+        }
+        if (where.getState() != null && !where.getState().isEmpty()) {
+            wrapper.eq("state", where.getState());
+        }
+        if (where.getType() != null && !where.getType().isEmpty()) {  //账号类型：1房东，2房客
+            wrapper.eq("type", where.getType());
+        }
+        return RespEntity.ok().setResponseContent(mszAccountService.listPage(pagingRequest, wrapper));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "name", value = "姓名(模糊查询)"),
+            @ApiImplicitParam(name = "type", value = "账号类型：1房东，2房客"),
+            @ApiImplicitParam(name = "state", value = "状态：0正常")
+    })
+    @ApiOperation(value = "分页查询Account-------PC(获取所有房东)@Update=Maoyy", notes = "分页查询Account-------PC(获取所有房东)@Update=Maoyy")
+    @GetMapping("/getLandlordList")
+    public RespEntity<PageInfo<MszAccount>> getLandlordList( MszAccountWhereReceive where) {
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        if (where.getName() != null && !where.getName().isEmpty()) {
+            wrapper.like("name", where.getName());
+        }
+        if (where.getState() != null && !where.getState().isEmpty()) {
+            wrapper.eq("state", where.getState());
+        }
+        if (where.getType() != null && !where.getType().isEmpty()) {  //账号类型：1房东，2房客
+            wrapper.eq("type", where.getType());
+        }
+        return RespEntity.ok().setResponseContent(mszAccountService.list(wrapper));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "name", value = "姓名(模糊查询)"),
+            @ApiImplicitParam(name = "type", value = "账号类型：1房东，2房客"),
+            @ApiImplicitParam(name = "state", value = "状态：0正常")
+    })
+    @ApiOperation(value = "不分页查询Account表信息-------PC(PC端发布房源模糊查询所有房东)@Author =Maoyy", notes = "不分页查询Account表信息-------PC(PC端发布房源模糊查询所有房东)@Author =Maoyy")
+    @GetMapping("/allList")
+    public RespEntity<PageInfo<MszAccount>> allList(MszAccountWhereReceive where) {
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        if (where.getName() != null && !where.getName().isEmpty()) {
+            wrapper.like("name", where.getName());
+        }
+        if (where.getState() != null && !where.getState().isEmpty()) {
+            wrapper.eq("state", where.getState());
+        }
+        if (where.getType() != null && !where.getType().isEmpty()) {  //账号类型：1房东，2房客
+            wrapper.eq("type", where.getType());
+        }
+        return RespEntity.ok().setResponseContent(mszAccountService.selectList(wrapper));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "state", value = "状态：1.已签约 2.未签约 3.禁用", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "name", value = "姓名(模糊查询)"),
+
+    })
+    @ApiOperation(value = "分页查询房客-------PC(PC端的房客列表)@Author=Maoyy", notes = "分页查询房客-------PC(PC端的房客列表)@Author=Maoyy")
+    @GetMapping("/getGuestsList")
+    @LoginRequired
+    public RespEntity<PageInfo<MszAccount>> getGuestsList(PagingRequest pagingRequest, String state, String name, @CurrentUser SysUser user) {
+        return RespEntity.ok().setResponseContent(mszAccountService.getGuestsList(pagingRequest, name, state, user));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "state", value = "状态：0.待生效 1.执行中", required = true, paramType = "query")
+
+    })
+    @ApiOperation(value = "分页查询待生效和执行中房客-------(小程序的房客列表)@Author=cww", notes = "分页查询待生效和执行中房客-------(小程序的房客列表)@Author=cww")
+    @GetMapping("/getWeXinGuestsList")
+    public RespEntity<PageInfo<MszAccount>> getWeXinGuestsList(PagingRequest pagingRequest, String state, Integer orgId) {
+        return RespEntity.ok().setResponseContent(mszAccountService.getWeXinGuestsList(pagingRequest, state, orgId));
+    }
+
+
+    @ApiOperation(value = "查询正常房东和禁用状态房东的数量-------PC(PC端的房东列表)@Author=Maoyy", notes = "查询正常房东和禁用状态房东的数量-------PC(PC端的房东列表)@Author=Maoyy")
+    @GetMapping("/getNormalNumAndExceptionNum")
+    public RespEntity<NormalNumAndExceptionNumVO> getNormalNumAndExceptionNum() {
+        NormalNumAndExceptionNumVO vo = new NormalNumAndExceptionNumVO();
+        vo.setExceptionNum(mszAccountService.selectCount(new EntityWrapper<MszAccount>().eq("state", 1).eq("type", 1)));
+        vo.setNormalNum(mszAccountService.selectCount(new EntityWrapper<MszAccount>().eq("state", 0).eq("type", 1)));
+        return RespEntity.ok().setResponseContent(vo);
+    }
+
+    @ApiOperation(value = "房客列表查询已签约/未签约/禁用的数量-------PC(PC端的房客列表)@Author=Maoyy", notes = "房客列表查询已签约/未签约/禁用的数量-------PC(PC端的房客列表)@Author=Maoyy")
+    @GetMapping("/getSignedNumAndNotSignedNumAndDisableNum")
+    @LoginRequired
+    public RespEntity<NormalNumAndExceptionNumVO> getSignedNumAndNotSignedNumAndDisableNum(@CurrentUser SysUser user) {
+        return RespEntity.ok().setResponseContent(mszAccountService.getSignedNumAndNotSignedNumAndDisableNum(user));
+    }
+
+    @PostMapping("/insert")
+    @ApiOperation(value = "新增房东", notes = "新增房东")
+    public RespEntity insert(@RequestBody MszAccount mszAccount) throws Exception {
+        List<MszAccount> mszAccounts = mszAccountService.selectList(new EntityWrapper<MszAccount>().eq("tel", mszAccount.getTel()));
+        if (mszAccounts.size() == 0) {
+            String md5Pwd = MD5Util.md5(mszAccount.getTel(), mszAccount.getPwd(), new SimpleDateFormat("yyyyMMddHHmmss").format(mszAccount.getCreateTime()));
+            mszAccount.setPwd(md5Pwd);
+            if (!mszAccountService.insert(mszAccount)) {
+                return RespEntity.badRequest("保存失败");
+            }
+            //新增房东钱包
+            MszWallet wallet = new MszWallet();
+            wallet.setAccountId(mszAccount.getId());
+            wallet.setPwd(md5Pwd);
+            walletService.insert(wallet);
+            return RespEntity.ok("保存成功");
+        }
+        return RespEntity.badRequest("您已经注册该账号了");
+    }
+
+  /*  @PostMapping("/insertTenant")
+    @ApiOperation(value = "新增房客", notes = "新增房客")
+    public RespEntity insertTenant(@RequestBody MszAccount mszAccount) throws Exception {
+        return null;
+    }
+*/
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszAccount", notes = "根据ID修改MszAccount")
+    public RespEntity update(@RequestBody MszAccount mszAccount) {
+        MszAccount isUser = mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("tel", mszAccount.getPhone()).ne("id", mszAccount.getId()));
+        if (isUser == null) {
+            mszAccount.setTel(mszAccount.getPhone());
+            mszAccount.setOrgId(mszAccount.getOrgId());
+            mszAccount.setPwd(null);
+            if (!mszAccountService.updateById(mszAccount)) {
+                return RespEntity.badRequest("更新失败");
+            }
+            return RespEntity.ok("更新成功");
+        }
+        RespEntity resp = new RespEntity();
+        resp.setStatusMessage("修改失败,此手机号已被注册");
+        resp.setStatusCode("0");
+        return resp;
+    }
+
+    @PutMapping("/updateIsDel")
+    @ApiOperation(value = "禁用", notes = "禁用")
+    public RespEntity updateIsDel(@RequestParam Integer id) {
+        MszAccount mszAccount = new MszAccount();
+        mszAccount.setState("1");
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        wrapper.eq("id", id);
+        if (!mszAccountService.update(mszAccount, wrapper)) {
+            return RespEntity.badRequest("禁用失败");
+        }
+        return RespEntity.ok("禁用成功");
+    }
+
+    @PutMapping("/updateQiYong")
+    @ApiOperation(value = "启用", notes = "启用")
+    public RespEntity updateQiYong(@RequestParam Integer id) {
+        MszAccount mszAccount = new MszAccount();
+        mszAccount.setState("0");
+        EntityWrapper<MszAccount> wrapper = new EntityWrapper<>();
+        wrapper.eq("id", id);
+        if (!mszAccountService.update(mszAccount, wrapper)) {
+            return RespEntity.badRequest("启用失败");
+        }
+        return RespEntity.ok("启用成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszAccount", notes = "根据ID删除MszAccount")
+    public RespEntity delete(@PathVariable Integer id) {
+        if (!mszAccountService.deleteById(id)) {
+            return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

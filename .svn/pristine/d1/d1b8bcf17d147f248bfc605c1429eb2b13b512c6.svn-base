@@ -1,0 +1,146 @@
+package com.msz.service.impl;
+
+import com.msz.Scheduler.LeaseScheduler;
+import com.msz.VO.LeaseReturnParamVO;
+import com.msz.VO.MessageTeamplate;
+import com.msz.VO.ScheduleVO;
+import com.msz.common.UserCommon;
+import com.msz.dao.MszOrderInfoMapper;
+import com.msz.dao.MszRoomMapper;
+import com.msz.dao.MszScheduleMapper;
+import com.msz.dao.SysCityMapper;
+import com.msz.model.MszOrderInfo;
+import com.msz.model.MszRoom;
+import com.msz.model.MszSchedule;
+import com.msz.model.SysUser;
+import com.msz.service.MszScheduleService;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.util.MessageTeamplateUtil;
+import com.msz.util.UUIDUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.msz.common.PagingRequest;
+
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 预付定金表 服务实现类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08 ${time}
+ */
+@Service
+public class MszScheduleServiceImpl extends ServiceImpl<MszScheduleMapper, MszSchedule> implements MszScheduleService {
+
+    private static Logger logger = LoggerFactory.getLogger(MszScheduleServiceImpl.class);
+
+    @Autowired
+    MszScheduleMapper scheduleMapper;
+    @Autowired
+    MszRoomMapper mszRoomMapper;
+    @Autowired
+    MszOrderInfoMapper orderInfoMapper;
+    @Autowired
+    SysCityMapper sysCityMapper;
+
+    @Override
+    public PageInfo<LeaseReturnParamVO> listPage(PagingRequest pagingRequest,String tenantName) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        List<LeaseReturnParamVO> list;
+        SysUser user = UserCommon.getCurrentUser();
+        String role = user.getRole();
+        LeaseReturnParamVO returnParamVO = new LeaseReturnParamVO();
+        if (role.equals("管理员")) {
+//            returnParamVO.setStatus("0");
+            returnParamVO.setTenantName(tenantName);
+            list = scheduleMapper.findList(returnParamVO);
+            if (list != null && list.size() > 0) {
+                list.forEach(item -> {
+                    item.setStatus("0");
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        } else {
+            returnParamVO.setOrgId(user.getOrgId());
+//            returnParamVO.setStatus("0");
+            returnParamVO.setTenantName(tenantName);
+            list = scheduleMapper.findList(returnParamVO);
+            if (list != null && list.size() > 0) {
+                list.forEach(item -> {
+                    item.setStatus("0");
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        }
+        return new PageInfo<>(list);
+    }
+
+
+    @Override
+    public boolean insertSchedule(MszSchedule schedule) {
+        try {
+            //1.插入预付定金表
+            scheduleMapper.insert(schedule);
+            //2.修改房屋状态为已租
+            MszRoom room = new MszRoom();
+            room.setId(schedule.getRoomId());
+            room.setStatus("1");
+            room.setEndTime(schedule.getScheduleEndTime());
+            mszRoomMapper.updateById(room);
+            //3.添加信息和定金到订单表
+            room = mszRoomMapper.selectById(room.getId());
+            MszOrderInfo vo = new MszOrderInfo();
+            vo.setNo(UUIDUtils.getOrderIdByTime());
+            vo.setScheduleId(schedule.getId());
+            vo.setCreateTime(new Date());
+            vo.setRoomId(schedule.getRoomId());
+            vo.setTenantId(schedule.getTenantId());
+            vo.setSchedulePrice(schedule.getPaidAmount());
+            vo.setReceiveTotal(schedule.getPaidAmount());
+            vo.setPaidTotal(schedule.getPaidAmount());
+            vo.setOrgId(room.getOrgId());
+            orderInfoMapper.insert(vo);
+        }catch (Exception e ){
+            logger.debug("异常信息：");
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    @Override
+    public boolean updatSchedule(MszSchedule mszSchedule) {
+        try {
+            scheduleMapper.updateById(mszSchedule);
+            MszRoom room = new MszRoom();
+            room.setEndTime(mszSchedule.getScheduleEndTime());
+            mszRoomMapper.updateById(room);
+        }catch (Exception e ){
+            logger.debug("异常信息：");
+            e.printStackTrace();
+        }
+        return true;
+    }
+
+    @Override
+    public MszSchedule getSchedule(Integer id) {
+
+        return scheduleMapper.getSchedule(id);
+    }
+
+}

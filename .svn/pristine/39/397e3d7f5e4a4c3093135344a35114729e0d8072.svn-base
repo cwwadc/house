@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysLogMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.SysLog">
+		<id column="id" property="id" />
+		<result column="userId" property="userId" />
+		<result column="type" property="type" />
+		<result column="ip" property="ip" />
+		<result column="info" property="info" />
+		<result column="createTime" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, userId, type, ip, info, createTime
+    </sql>
+
+	<select id="findList" resultType="com.msz.VO.SysLogVO" parameterType="com.msz.VO.SysLogVO">
+		SELECT a.*,u.username AS "userName" FROM sys_log a
+		LEFT JOIN sys_user u ON u.id=a.userId
+		WHERE 0=0
+		<if test="createTimeMin != null and createTimeMin != '' and createTimeMax != null and createTimeMax != ''">
+			AND a.createTime BETWEEN  #{createTimeMin} AND  #{createTimeMax}
+		</if>
+	</select>
+
+</mapper>

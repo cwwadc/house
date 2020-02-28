@@ -1,0 +1,103 @@
+package com.msz.controller;
+
+import com.msz.model.MszOrderCharge;
+import com.msz.service.MszOrderChargeService;
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+
+/**
+ * <p>
+ * 缴费收费项目（破坏房屋设施等） 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08 ${time}
+ */
+@Api(value = "/msz-order-charges", description = "缴费收费项目（破坏房屋设施等） 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-order-charges")
+public class MszOrderChargeController {
+
+    /**
+    
+     *    主键ID  id  Integer 
+    
+     *    缴费ID  orderId  Integer 
+    
+     *    费用类型  chargeName  String 
+    
+     *    应收金额  receiveAmount  BigDecimal 
+    
+     *    实收金额  paidAmount  BigDecimal 
+    
+     *    开始时间  startTime  Date 
+    
+     *    结束时间  endTime  Date 
+    
+     *    是否删除  isDel  String 
+    
+     *    创建时间  createTime  Date 
+         */
+    @Autowired
+    private MszOrderChargeService mszOrderChargeService;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszOrderCharge-------PC@Author=Maoyy", notes = "根据id获取单个MszOrderCharge-------PC@Author=Maoyy")
+    public RespEntity< MszOrderCharge > get(@PathVariable Integer id){
+        return RespEntity.ok().setResponseContent(mszOrderChargeService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszOrderCharge-------PC@Author=Maoyy", notes = "分页查询MszOrderCharge-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszOrderCharge>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(mszOrderChargeService.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszOrderCharge-------PC@Author=Maoyy", notes = "保存MszOrderCharge-------PC@Author=Maoyy")
+    public RespEntity insert(@RequestBody MszOrderCharge mszOrderCharge ){
+        if ( ! mszOrderChargeService.insert( mszOrderCharge) ){
+        return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszOrderCharge-------PC@Author=Maoyy", notes = "根据ID修改MszOrderCharge-------PC@Author=Maoyy")
+    public RespEntity update(@RequestBody MszOrderCharge mszOrderCharge ){
+        if ( ! mszOrderChargeService.updateById( mszOrderCharge ) ){
+        return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszOrderCharge-------PC@Author=Maoyy", notes = "根据ID删除MszOrderCharge-------PC@Author=Maoyy")
+    public RespEntity delete(@PathVariable Integer id){
+        if ( ! mszOrderChargeService.deleteById(id) ){
+        return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+
+}

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysOrgMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.SysOrg">
+		<id column="id" property="id" />
+		<result column="code" property="code" />
+		<result column="name" property="name" />
+		<result column="parentId" property="parentId" />
+		<result column="stafId" property="stafId" />
+		<result column="address" property="address" />
+		<result column="tel" property="tel" />
+		<result column="isDel" property="isDel" />
+		<result column="createTime" property="createTime" />
+		<result column="updateTime" property="updateTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, code, name, parentId, stafId, address, tel, isDel, createTime, updateTime
+    </sql>
+
+	<select id="getOrgList" resultType="com.msz.VO.SysOrgVo" parameterType="com.msz.VO.SysOrgVo">
+		SELECT o.*,u.trueName AS "stafName" FROM sys_org o
+		LEFT JOIN sys_user u ON o.stafId = u.id
+		WHERE 0=0
+		<if test="searchField != null and searchField != '' ">
+			AND  (o.code LIKE "%"#{searchField}"%" OR u.trueName LIKE "%"#{searchField}"%" OR o.name LIKE "%"#{searchField}"%")
+		</if>
+		<if test="stafId != null and stafId != ''">
+			AND  stafId = #{stafId}
+		</if>
+	</select>
+
+	<!-- OR r.roleName='网点负责人'-->
+	<select id="getCollectors" resultType="com.msz.model.SysUser" parameterType="com.msz.model.SysUser">
+		SELECT u.id, u.username, u.password, u.sex, u.phone, u.trueName, u.idCard, u.address, u.orgId, u.state,
+		u.type, u.hireDate, u.imgIdcard1, u.imgIdcard2, u.createTime, u.updateTime,r.id AS "roleId", r.roleName AS  "role"
+        FROM sys_user u
+		LEFT JOIN sys_user_role ur ON ur.userId=u.id
+		LEFT JOIN sys_role r ON r.id=ur.roleId
+		WHERE r.isDel=0
+		AND (r.roleName='业务员')
+		<if test="orgId != null and orgId != ''">
+			AND u.orgId = #{orgId}
+		</if>
+		<if test="trueName != null and trueName != ''">
+			AND u.trueName LIKE "%"#{trueName}"%"
+		</if>
+	</select>
+
+	<update id="updateSetEmpty" parameterType="com.msz.model.SysUser">
+		update sys_user set orgId = null where id = #{id}
+	</update>
+</mapper>

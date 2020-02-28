@@ -1,0 +1,123 @@
+package com.msz.VO;
+
+import com.msz.controller.MszLeaseChargeController;
+import com.msz.model.MszLeaseCharge;
+import com.msz.model.MszSchedule;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+@Data
+public class LeaseParamVO {
+
+   private List<MszLeaseCharge> leaseChargeList;
+    /**
+     * 租约id
+     */
+    private Integer id;
+    /**
+     * 所属网点id
+     */
+    private Integer orgId;
+    /**
+     * 房间ID
+     */
+    private Integer roomId;
+    /**
+     * 房东ID
+     */
+    private Integer landlordId;
+    /**
+     * 房客ID
+     */
+    private Integer tenantId;
+    /**
+     * 业务员id
+     */
+    private Integer userId;
+    /**
+     * 截止时间
+     */
+    private Date stopTime;
+    /**
+     * 开始时间
+     */
+    private Date startTime;
+    /**
+     * 结束时间
+     */
+    private Date endTime;
+    /**
+     * 提前终止时间
+     */
+    private Date terminationTime;
+    /**
+     * 合同照片
+     */
+    private String contractPicture;
+    /**
+     * 创建人
+     */
+    private Integer operator;
+    /**
+     * 生成时间
+     */
+    private Date createTime;
+
+    /**
+     * 账单日
+     */
+    private String billDay;
+    /**
+     * 租金交费日
+     */
+    private String collectMoneyDay;
+
+    //租约修改过后的租金押金
+    /**
+     * 付款方式(0: 月付  1 季付 2: 半年付 3: 一年付  )
+     */
+    private Integer payWay;
+    /**
+     * 押金
+     */
+    private String depositPrice;
+    /**
+     * 实收押金
+     */
+    private BigDecimal paidDepositPrice;
+    /**
+     * 租金
+     */
+    private String rentPrice;
+    /**
+     * 实收租金
+     */
+    private BigDecimal paidRentPrice;
+    /**
+     * 0 不应用到每期交费  1 应用到每期交费
+     */
+    private String available;
+    /**
+     * 0 不修改金额提醒  1 修改金额提醒
+     */
+    private String flag;
+
+    //房客信息
+    /**
+     * 房客电话
+     */
+    private String tenantName;
+    /**
+     * 房客电话
+     */
+    private String tel;
+    /**
+     * 房客电话
+     */
+    private String idCard;
+
+}

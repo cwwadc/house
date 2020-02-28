@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszRoomTempleMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszRoomTemple">
+		<id column="id" property="id" />
+		<result column="houseId" property="houseId" />
+		<result column="orgId" property="orgId" />
+		<result column="userId" property="userId" />
+		<result column="telId" property="telId" />
+		<result column="provinceId" property="provinceId" />
+		<result column="cityId" property="cityId" />
+		<result column="countyId" property="countyId" />
+		<result column="townId" property="townId" />
+		<result column="townNumber" property="townNumber" />
+		<result column="address" property="address" />
+		<result column="community" property="community" />
+		<result column="room" property="room" />
+		<result column="hall" property="hall" />
+		<result column="toilet" property="toilet" />
+		<result column="houseDesc" property="houseDesc" />
+		<result column="floor" property="floor" />
+		<result column="whichFloor" property="whichFloor" />
+		<result column="isElevator" property="elevator" />
+		<result column="area" property="area" />
+		<result column="decorate" property="decorate" />
+		<result column="toward" property="toward" />
+		<result column="configuration" property="configuration" />
+		<result column="payWay" property="payWay" />
+		<result column="rentPrice" property="rentPrice" />
+		<result column="depositPrice" property="depositPrice" />
+		<result column="floorPrice" property="floorPrice" />
+		<result column="diffPrice" property="diffPrice" />
+		<result column="title" property="title" />
+		<result column="description" property="description" />
+		<result column="indoor_image" property="indoorImage" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, houseId, orgId, userId, telId, provinceId, cityId, countyId, townId, townNumber, address, community, room, hall, toilet, houseDesc, floor, whichFloor, isElevator AS elevator, area, decorate, toward, configuration, payWay, rentPrice, depositPrice, floorPrice, diffPrice, title, description, indoor_image AS indoorImage
+    </sql>
+
+</mapper>

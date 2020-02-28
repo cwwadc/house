@@ -1,0 +1,284 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.github.pagehelper.PageInfo;
+import com.msz.VO.IncomeListVo;
+import com.msz.VO.MszOrderHistoryVO;
+import com.msz.VO.PayInfoVO;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.*;
+import com.msz.service.MszAccountService;
+import com.msz.service.MszOrderHistoryService;
+import com.msz.service.SysRoleService;
+import com.msz.service.SysUserRoleService;
+import com.msz.util.ExportExcel;
+import com.msz.util.PageInfoUtil;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.jws.soap.SOAPBinding;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 历史缴费信息 前端控制器
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Api(value = "/msz-order-historys", description = "历史缴费信息 接口; Responseble:cww")
+@RestController
+@RequestMapping("/msz-order-historys")
+public class MszOrderHistoryController {
+
+    /**
+     * id  Integer
+     * <p>
+     * 缴费编号  no  String
+     * <p>
+     * 租约ID  leaseId  Integer
+     * <p>
+     * 房间ID  roomId  Integer
+     * <p>
+     * 房东ID  landlordId  Integer
+     * <p>
+     * 房客ID  tenantId  Integer
+     * <p>
+     * 租金  rentPrice  BigDecimal
+     * <p>
+     * 押金  depositPrice  BigDecimal
+     * <p>
+     * breachPrice  BigDecimal
+     * <p>
+     * 结束时间  endTime  Date
+     * <p>
+     * 缴费状态 0未缴费 1已缴费  status  String
+     * <p>
+     * 是否删除  isDel  String
+     * <p>
+     * 更新时间  updateTime  Date
+     * <p>
+     * 生成时间  createTime  Date
+     */
+    @Autowired
+    private MszOrderHistoryService mszOrderHistoryService;
+
+    @Autowired
+    private MszAccountService mszAccountService;
+    @Autowired
+    private SysUserRoleService sysUserRoleService;
+    @Autowired
+    private SysRoleService sysRoleService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszOrderHistory", notes = "根据id获取单个MszOrderHistory")
+    public RespEntity<MszOrderHistory> get(@PathVariable Integer id) {
+        MszOrderHistory orderHistory = new MszOrderHistory();
+        orderHistory = mszOrderHistoryService.selectById(id);
+        if (orderHistory != null) {
+            orderHistory.setTenantName(mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("id", orderHistory.getTenantId())).getName());
+        }
+        return RespEntity.ok().setResponseContent(orderHistory);
+    }
+
+    @GetMapping("byYearMonthGroup/{id}")
+    @ApiOperation(value = "查询那些月份有交易记录-------小程序(房东)@Author=Maoyy", notes = "查询那些月份有交易记录-------小程序(房东)@Author=Maoyy")
+    public RespEntity<PageInfo<PayInfoVO>> byYearMonthGroup(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszOrderHistoryService.byYearMonthGroup(id));
+    }
+
+    @GetMapping("byMonthGroup")
+    @ApiOperation(value = "根据年月查询交易记录-------小程序(房东)@Author=Maoyy", notes = "根据年月查询交易记录-------小程序(房东)@Author=Maoyy")
+    public RespEntity<PageInfo<MszOrderHistoryVO>> byMonthGroup(String date, Integer id) {
+        return RespEntity.ok().setResponseContent(mszOrderHistoryService.byMonthGroup(id, date));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszOrderHistory", notes = "分页查询MszOrderHistory")
+    @GetMapping
+    public RespEntity<PageInfo<MszOrderHistory>> list(PagingRequest pagingRequest) {
+        return RespEntity.ok().setResponseContent(mszOrderHistoryService.listPage(pagingRequest, null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszOrderHistory", notes = "保存MszOrderHistory")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszOrderHistory mszOrderHistory) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszOrderHistoryService.insert(mszOrderHistory)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->新增->失败");
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszOrderHistory", notes = "根据ID修改MszOrderHistory")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszOrderHistory mszOrderHistory) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszOrderHistoryService.updateById(mszOrderHistory)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->更新->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszOrderHistory", notes = "根据ID删除MszOrderHistory")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszOrderHistoryService.deleteById(id)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"历史缴费信息->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "name", value = "网点名称", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "startTime", value = "开始时间", paramType = "query"),
+            @ApiImplicitParam(name = "endTime", value = "结束时间", paramType = "query")
+    })
+    @GetMapping("/incomeStatement")
+    @ApiOperation(value = "收入报表分页查询,按月分组", notes = "收入报表分页查询，按月分组")
+    @LoginRequired
+    public RespEntity incomeStatement(PagingRequest pagingRequest,String name, Date startTime, Date endTime) {
+        if("全部".equals(name)){
+            name = null;
+        }
+        String roleName = UserCommon.getCurrentUser().getRole();
+        //if ("管理员".equals(roleName)) {
+            //分页查询
+            List<IncomeListVo> incomeListVoList = mszOrderHistoryService.incomeStatement(pagingRequest, name, startTime, endTime);
+            //总条数
+            int total = mszOrderHistoryService.incomeStatementSums(name, startTime, endTime);
+            //总页数
+            int pages = total % pagingRequest.getLimit() == 0 ? (total / pagingRequest.getLimit()) : (total / pagingRequest.getLimit() + 1);
+            //返回
+            PageInfo<IncomeListVo> pageInfo = new PageInfo<IncomeListVo>();
+            pageInfo = PageInfoUtil.setPageInfo(pageInfo, incomeListVoList, pagingRequest, total, pages);
+            return RespEntity.ok().setResponseContent(pageInfo);
+
+        //} else if ("网点负责人".equals(roleName)) {
+           // List<IncomeListVo> incomeListVoList = mszOrderHistoryService.incomeStatement2(name, startTime, endTime);
+            //return RespEntity.ok().setResponseContent(incomeListVoList);
+        //}
+
+        //return RespEntity.forbidden();
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "orgId", value = "网点Id", required = false, paramType = "query")
+    })
+    @GetMapping("/incomeStatementMessage")
+    @ApiOperation(value = "收入报表， 查看", notes = "收入报表， 查看")
+    @LoginRequired
+    public RespEntity incomeStatementMessage(Integer orgId) {
+        List<MszOrderHistory> mszOrderHistoryList = mszOrderHistoryService.incomeStatementMessage(orgId);
+        return RespEntity.ok().setResponseContent(mszOrderHistoryList);
+    }
+
+    @GetMapping("/incomeMonthly")
+    @ApiOperation(value = "按月分组-收入查看明细", notes = "按月分组-收入查看明细")
+    @LoginRequired
+    public RespEntity incomeMonthly(String name, String groupTime) {
+        Integer orgId = UserCommon.getCurrentUser().getOrgId();
+        List<MszOrderHistory> mszOrderHistoryList = mszOrderHistoryService.incomeMonthly(orgId, groupTime);
+        return RespEntity.ok().setResponseContent(mszOrderHistoryList);
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "id", value = "网点Id", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "startTime", value = "开始时间", paramType = "query"),
+            @ApiImplicitParam(name = "endTime", value = "结束时间", paramType = "query")
+    })
+    @ApiOperation(value = "导出excel", notes = "导出excel")
+    @PostMapping("/exportExcelData")
+    public void exportExcelData(HttpServletResponse response, Integer id, Date startTime, Date endTime) {
+        //excel标题
+        String title = "收入财务报表";
+        //excel表名
+        String[] headers = {"房客", "应收租金", "实收租金", "应收押金", "实收押金", "应收总费用", "实收总费用", "欠收总费用"};
+        //excel文件名
+        String fileName = title + System.currentTimeMillis() + ".xls";
+        List<MszOrderHistory> list = mszOrderHistoryService.selectexportExcelData(id, startTime, endTime);
+        //excel元素
+        String content[][] = new String[list.size()][8];
+        if (list != null && list.size() > 0) {
+            for (int i = 0; i < list.size(); i++) {
+                content[i][0] = list.get(i).getTenantName();
+                content[i][1] = list.get(i).getRentPrice() + "";
+                content[i][2] = list.get(i).getPaidRentPrice() + "";
+                content[i][3] = list.get(i).getDepositPrice() + "";
+                content[i][4] = list.get(i).getPaidDepositPrice() + "";
+                content[i][5] = list.get(i).getReceiveTotal() + "";
+                content[i][6] = list.get(i).getPaidTotal() + "";
+                content[i][7] = list.get(i).getOweTotal() + "";
+            }
+        }
+        //创建HSSFWorkbook
+        XSSFWorkbook hssfWorkbook = ExportExcel.getHSSFWorkbook(title, headers, content);
+        //响应到客户端
+        try {
+            this.setResponseHeader(response, fileName);
+            OutputStream os = response.getOutputStream();
+            hssfWorkbook.write(os);
+            os.flush();
+            os.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 设置响应头
+     */
+    private void setResponseHeader(HttpServletResponse aResponse, String aFileName) {
+        try {
+            try {
+                aFileName = new String(aFileName.getBytes(), "ISO8859-1");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+            aResponse.setContentType("application/octet-stream;charset=ISO8859-1");
+            aResponse.setHeader("Content-Disposition", "attachment;filename=" + aFileName);
+            aResponse.addHeader("Pargam", "no-cache");
+            aResponse.addHeader("Cache-Control", "no-cache");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+}

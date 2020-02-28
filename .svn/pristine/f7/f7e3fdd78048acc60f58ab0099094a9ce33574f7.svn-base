@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszRefundInfoMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszRefundInfo">
+		<id column="id" property="id" />
+		<result column="no" property="no" />
+		<result column="leaseId" property="leaseId" />
+		<result column="tenantId" property="tenantId" />
+		<result column="rentPrice" property="rentPrice" />
+		<result column="depositPrice" property="depositPrice" />
+		<result column="total" property="total" />
+		<result column="applyTime" property="applyTime" />
+		<result column="userId" property="userId" />
+		<result column="status" property="status" />
+		<result column="isDel" property="isDel" />
+		<result column="updateTime" property="updateTime" />
+		<result column="createTime" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, leaseId, tenantId, rentPrice, depositPrice, total, applyTime, userId, status, isDel, updateTime, createTime
+    </sql>
+
+	<select id="findList" resultType="com.msz.VO.MszRefundInfoVO" parameterType="com.msz.VO.MszRefundInfoVO">
+		SELECT
+			r.*, l.`no` AS "leaseNo", a.`name` AS "tenantName",b.`name` AS "landlordName", a.tel AS "tenantTel", a.openId AS "openId",u.trueName AS "userName"
+		FROM
+			msz_refund_info r
+		LEFT JOIN msz_account a ON a.id = r.tenantId
+		LEFT JOIN msz_account b ON b.id = r.landlordId
+		LEFT JOIN msz_lease l ON l.id = r.leaseId
+		LEFT JOIN sys_user u ON u.id = r.userId
+		WHERE 0=0
+		<if test="status != null and status != ''">
+			AND r.status = #{status}
+		</if>
+	</select>
+
+	<select id="getDescById" resultType="com.msz.model.MszRefundInfo" parameterType="java.lang.Integer">
+		SELECT
+		r.*, l.`no` AS "leaseNo", a.`name` AS "tenantName",b.`name` AS "landlordName", a.tel AS "tenantTel", a.openId AS "openId",u.trueName AS "userName"
+		FROM
+		msz_refund_info r
+		LEFT JOIN msz_account a ON a.id = r.tenantId
+		LEFT JOIN msz_account b ON b.id = r.landlordId
+		LEFT JOIN msz_lease l ON l.id = r.leaseId
+		LEFT JOIN sys_user u ON u.id = r.userId
+		WHERE r.id = #{id}
+	</select>
+
+</mapper>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszHouseMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszHouse">
+        <id column="id" property="id"/>
+        <result column="houseName" property="houseName"/>
+        <result column="address" property="address"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, houseName, address
+    </sql>
+
+    <insert id="insertHouseGetId" parameterType="com.msz.model.MszHouse" useGeneratedKeys="true"
+            keyProperty="mszHouse.id">
+        INSERT INTO msz_house (houseName, address, orgId, telId ) VALUES ( #{mszHouse.houseName}, #{mszHouse.address}, #{mszHouse.orgId}, #{mszHouse.telId})
+    </insert>
+
+    <select id="getHouseData" resultType="com.msz.VO.WeHouseDataVO">
+            SELECT
+                h.id id,
+                h.houseName houseName,
+                (
+                SELECT
+                    count( * )
+                FROM
+                    msz_lease l
+                    LEFT JOIN msz_room r ON l.roomId = r.id
+                WHERE
+                    l.landlordId = #{id}
+                    AND r.houseId = h.id
+                    AND l.`status` = 1
+                ) checkIn,
+                ( SELECT count( * ) FROM msz_room r WHERE r.houseId = h.id )  sum
+            FROM
+                msz_house h
+            WHERE
+                h.telId = #{id}
+    </select>
+</mapper>

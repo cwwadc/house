@@ -1,0 +1,229 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.github.pagehelper.PageInfo;
+import com.msz.VO.MszOrderInfoVo;
+import com.msz.VO.MszWithdrawStatusNum;
+import com.msz.VO.RoomStatusNumVO;
+import com.msz.annotation.CurrentUser;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.model.*;
+import com.msz.service.*;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.swing.text.html.parser.Entity;
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.UUID;
+
+
+/**
+ * <p>
+ * 缴费信息 前端控制器
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Api(value = "/msz-order-infos", description = "缴费信息 接口; Responseble:cww")
+@RestController
+@RequestMapping("/msz-order-infos")
+public class MszOrderInfoController {
+
+    /**
+     * id  Integer
+     * <p>
+     * 缴费编号  no  String
+     * <p>
+     * 租约ID  leaseId  Integer
+     * <p>
+     * 房间ID  roomId  Integer
+     * <p>
+     * 房东ID  landlordId  Integer
+     * <p>
+     * 房客ID  tenantId  Integer
+     * <p>
+     * 租金  rentPrice  BigDecimal
+     * <p>
+     * 押金  depositPrice  BigDecimal
+     * <p>
+     * breachPrice  BigDecimal
+     * <p>
+     * 结束时间  endTime  Date
+     * <p>
+     * 缴费状态 0未缴费 1已缴费  status  String
+     * <p>
+     * 是否删除  isDel  String
+     * <p>
+     * 更新时间  updateTime  Date
+     * <p>
+     * 生成时间  createTime  Date
+     */
+    @Autowired
+    private MszOrderInfoService mszOrderInfoService;
+    @Autowired
+    private MszWalletService walletService;
+    @Autowired
+    private MszOrderHistoryService mszOrderHistoryService;
+    @Autowired
+    private MszAccountService mszAccountService;
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszOrderInfo", notes = "根据id获取单个MszOrderInfo")
+    public RespEntity<MszOrderInfo> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszOrderInfoService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "status", value = "缴费状态 0未缴费 1已缴费", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "endTimeBegin", value = "起始日期"),
+            @ApiImplicitParam(name = "endTimeEnd", value = "结束日期"),
+            @ApiImplicitParam(name = "tenantName", value = "模糊搜索房客名称")
+    })
+    @ApiOperation(value = "分页查询MszOrderInfo", notes = "分页查询MszOrderInfo")
+    @GetMapping("/getList")
+    @LoginRequired
+    public RespEntity<PageInfo<MszOrderInfoVo>> list(@CurrentUser SysUser user, PagingRequest pagingRequest, String status,
+                                                     String endTimeBegin, String endTimeEnd, String tenantName) {
+        return RespEntity.ok().setResponseContent(mszOrderInfoService.listPage(pagingRequest, status, endTimeBegin, endTimeEnd, tenantName, user));
+    }
+
+    @ApiOperation(value = "查询 已交/未交数量", notes = "查询 已交/未交数量")
+    @GetMapping("/getCountNum")
+    @LoginRequired
+    public RespEntity<PageInfo<MszWithdrawStatusNum>> getCountNum(@CurrentUser SysUser user) {
+
+        return RespEntity.ok().setResponseContent(mszOrderInfoService.getCountNum(user));
+    }
+
+    @ApiOperation(value = "查询房客已缴费列表", notes = "查询房客已缴费列表")
+    @GetMapping("/getPaidOrderInfo")
+    public RespEntity<PageInfo<MszOrderHistory>> getPaidOrderInfo(Integer tenantId) {
+
+        return RespEntity.ok().setResponseContent(mszOrderHistoryService.selectList(new EntityWrapper<MszOrderHistory>().eq("tenantId", tenantId).eq("status", "1")));
+    }
+
+    @PutMapping("/order/{id}")
+    @ApiOperation(value = "小程序房客缴费-------小程序(房客)@Author=Maoyy", notes = "小程序房客缴费-------小程序(房客)@Author=Maoyy")
+    public RespEntity order(@PathVariable Integer id) {
+        MszOrderInfo info = mszOrderInfoService.selectOne(new EntityWrapper<MszOrderInfo>().eq("id", id));
+        info.setStatus("1");
+        //付款后修改状态 并删除这条记录(插入到history表中)
+        MszOrderHistory mszOrderHistory = new MszOrderHistory();
+        mszOrderHistory.setOrgId(info.getOrgId());
+        mszOrderHistory.setNo(info.getNo());
+        mszOrderHistory.setLeaseId(info.getLeaseId());
+        mszOrderHistory.setRoomId(info.getRoomId());
+        mszOrderHistory.setLandlordId(info.getLandlordId());
+        mszOrderHistory.setTenantId(info.getTenantId());
+        mszOrderHistory.setId(info.getId());
+        mszOrderHistory.setRentPrice(info.getRentPrice());
+        mszOrderHistory.setDepositPrice(info.getDepositPrice());
+        mszOrderHistory.setTotal(info.getTotal());
+        mszOrderHistory.setBreachPrice(info.getBreachPrice());
+        mszOrderHistory.setEndTime(info.getEndTime());
+        mszOrderHistory.setStatus(info.getStatus());
+        mszOrderHistory.setUpdateTime(new Date());
+        mszOrderHistory.setCreateTime(new Date());
+        //严格事务 关系到钱 !!!!!!!!!!!!!!!! 关系到钱 !!!!!!!!!!!!!!!! 关系到钱 !!!!!!!!!!!!!!!! 关系到钱 !!!!!!!!!!!!!!!!
+        if (mszOrderHistoryService.insert(mszOrderHistory)) {
+            try {
+                mszOrderInfoService.deleteById(id);
+            } catch (Exception e) {
+                mszOrderHistoryService.deleteById(mszOrderHistory.getId());
+            }
+        }
+//        MszPayInfo pay = new MszPayInfo();
+//        //支付发起
+//        pay.setAccountId(info.getTenantId());
+//        //UUID
+//        pay.setId(UUID.randomUUID().toString().substring(0, 30));
+//        MszAccount acc = mszAccountService.selectOne(new EntityWrapper<MszAccount>().eq("id", info.getTenantId()));
+//        //房客名称
+//        pay.setAccountName(acc.getName() == null ? "" : acc.getName());
+//        pay.setType("1");
+        //暂时没有
+//        pay.setAmt(new BigDecimal());
+//        pay.setChannel("1");
+//        pay.setOrderId(info.getId());
+//        pay.setStatus("1");
+//        pay.setCreateTime(new Date());
+//        pay.setUpdateTime(new Date());
+//        try {
+//            //把付款的钱记录给房东加到房东的余额上去
+//            MszWallet mszWallet = walletService.selectOne(new EntityWrapper<MszWallet>().eq("accountId", info.getLandlordId()));
+//            if (mszWallet == null) {
+//                MszWallet wm = new MszWallet();
+//                wm.setPwd("000000");
+//                wm.setAccountId(info.getLandlordId());
+//                wm.setBalance(new BigDecimal(0));
+//                wm.setFrozen(new BigDecimal(0));
+//                walletService.insert(wm);
+//                mszWallet = wm;
+//            }
+//            BigDecimal balance = mszWallet.getBalance();
+//            MszWallet wallet = new MszWallet();
+//            wallet.setAccountId(mszWallet.getId());
+//            BigDecimal total = balance.add(info.getTotal());
+//            mszWallet.setBalance(total);
+//            walletService.updateById(mszWallet);
+//        } catch (Exception e) {
+//            mszOrderHistoryService.deleteById(mszOrderHistory.getId());
+//            mszOrderInfoService.insert(info);
+//            return RespEntity.ok("付款失败");
+//        }
+        return RespEntity.ok("付款成功");
+    }
+
+    @PostMapping("/insert")
+    @ApiOperation(value = "保存MszOrderInfo", notes = "保存MszOrderInfo")
+    public RespEntity insert(@RequestBody MszOrderInfo mszOrderInfo) {
+        mszOrderInfo.setUpdateTime(new Date());
+        if (!mszOrderInfoService.insert(mszOrderInfo)) {
+            return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+    @PostMapping("/remind")
+    @LoginRequired
+    @ApiOperation(value = "提醒缴费", notes = "提醒缴费")
+    public RespEntity remind(@RequestParam Integer id, @CurrentUser SysUser user) {
+        if (!mszOrderInfoService.remind(id, user)) {
+            return RespEntity.badRequest("提醒失败");
+        }
+        return RespEntity.ok("提醒成功");
+    }
+
+    @PutMapping("/update")
+    @ApiOperation(value = "根据ID修改MszOrderInfo", notes = "根据ID修改MszOrderInfo")
+    public RespEntity update(@RequestBody MszOrderInfo mszOrderInfo) {
+        if (!mszOrderInfoService.updateById(mszOrderInfo)) {
+            return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszOrderInfo", notes = "根据ID删除MszOrderInfo")
+    public RespEntity delete(@PathVariable Integer id) {
+        if (!mszOrderInfoService.deleteById(id)) {
+            return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

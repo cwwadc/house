@@ -1,0 +1,212 @@
+package com.msz.model;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import com.baomidou.mybatisplus.activerecord.Model;
+import com.baomidou.mybatisplus.annotations.TableField;
+import com.baomidou.mybatisplus.annotations.TableId;
+import com.baomidou.mybatisplus.annotations.TableName;
+
+import java.io.Serializable;
+
+import com.baomidou.mybatisplus.enums.IdType;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * <p>
+ * 历史缴费信息
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03
+ */
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@ApiModel(value = "MszOrderHistory对象", description = "历史缴费信息")
+@TableName("msz_order_history")
+public class MszOrderHistory extends Model<MszOrderHistory> {
+
+    private static final long serialVersionUID = 1L;
+
+    //    @TableId(value="id", type= IdType.AUTO)
+    @ApiModelProperty(value = "", name = "id")
+    private Integer id;
+    /**
+     * 缴费编号
+     */
+    @ApiModelProperty(value = "缴费编号", name = "no")
+    private String no;
+    /**
+     * 租约ID
+     */
+    @ApiModelProperty(value = "租约ID", name = "leaseId")
+    private Integer leaseId;
+    /**
+     * 房间ID
+     */
+    @ApiModelProperty(value = "房间ID", name = "roomId")
+    private Integer roomId;
+    /**
+     * 房东ID
+     */
+    @ApiModelProperty(value = "房东ID", name = "landlordId")
+    private Integer landlordId;
+    /**
+     * 房客ID
+     */
+    @ApiModelProperty(value = "房客ID", name = "tenantId")
+    private Integer tenantId;
+    /**
+     * 房客名称
+     */
+    @TableField(exist = false)
+    private String tenantName;
+
+    /**
+     * 预付定金ID
+     */
+    @ApiModelProperty(value = "预付定金ID", name = "scheduleId")
+    private Integer scheduleId;
+    /**
+     * 账单日
+     */
+    @ApiModelProperty(value = "账单日", name = "billDay")
+    private String billDay;
+    /**
+     * 租金交费日
+     */
+    @ApiModelProperty(value = "租金交费日", name = "collectMoneyDay")
+    private String collectMoneyDay;
+    /**
+     * 租金
+     */
+    @ApiModelProperty(value = "租金", name = "rentPrice")
+    private BigDecimal rentPrice;
+    /**
+     * 实收租金
+     */
+    @ApiModelProperty(value = "实收租金", name = "paidRentPrice")
+    private BigDecimal paidRentPrice;
+    /**
+     * 押金
+     */
+    @ApiModelProperty(value = "押金", name = "depositPrice")
+    private BigDecimal depositPrice;
+    /**
+     * 实收押金
+     */
+    @ApiModelProperty(value = "实收押金", name = "paidDepositPrice")
+    private BigDecimal paidDepositPrice;
+    /**
+     * 预付定金(应收)
+     */
+    @ApiModelProperty(value = "预付定金(应收)", name = "schedulePrice")
+    private BigDecimal schedulePrice;
+    /**
+     * 预付定金(实收)
+     */
+    @ApiModelProperty(value = "预付定金(实收)", name = "paidSchedulePrice")
+    private BigDecimal paidSchedulePrice;
+    /**
+     * 应收总费用
+     */
+    @ApiModelProperty(value = "应收总费用", name = "receiveTotal")
+    private BigDecimal receiveTotal;
+    /**
+     * 实收总费用
+     */
+    @ApiModelProperty(value = "实收总费用", name = "paidTotal")
+    private BigDecimal paidTotal;
+    /**
+     * 欠收总费用
+     */
+    @ApiModelProperty(value = "欠收总费用", name = "oweTotal")
+    private BigDecimal oweTotal;
+    /**
+     * 0 不欠租  1 欠租
+     */
+    @ApiModelProperty(value = "0 不欠租  1 欠租", name = "arrearsFlag")
+    private String arrearsFlag;
+    /**
+     * 0 不应用到每期交费  1 应用到每期交费
+     */
+    @ApiModelProperty(value = "0 不应用到每期交费  1 应用到每期交费", name = "available")
+    private String available;
+    /**
+     * 0 不修改金额提醒  1 修改金额提醒
+     */
+    @ApiModelProperty(value = "0 不修改金额提醒  1 修改金额提醒", name = "flag")
+    private String flag;
+    /**
+     * 违约金
+     */
+    @ApiModelProperty(value = "", name = "breachPrice")
+    private BigDecimal breachPrice;
+
+    /**
+     * 其它费用
+     */
+    @TableField(exist = false)
+    private BigDecimal otherPrice;
+
+    /**
+     * 结束时间
+     */
+    @ApiModelProperty(value = "结束时间", name = "endTime")
+    private Date endTime;
+    /**
+     * 缴费状态 0未缴费 1已缴费
+     */
+    @ApiModelProperty(value = "缴费状态 0未缴费 1已缴费", name = "status")
+    private String status;
+    /**
+     * 是否删除
+     */
+    @ApiModelProperty(value = "是否删除", name = "isDel")
+    private String isDel;
+    /**
+     * 更新时间
+     */
+    @ApiModelProperty(value = "更新时间", name = "updateTime")
+    private Date updateTime;
+    /**
+     * 生成时间
+     */
+    @ApiModelProperty(value = "生成时间", name = "createTime")
+    private Date createTime;
+    /**
+     * 所属网点id
+     */
+    @ApiModelProperty(value = "所属网点id", name = "orgId")
+    private Integer orgId;
+    /**
+     * 支付方式
+     */
+    @ApiModelProperty(value = "支付方式", name = "payType")
+    private Integer payType;
+    /**
+     * 操作人ID
+     */
+    @ApiModelProperty(value = "操作人ID", name = "operatorId")
+    private Integer operatorId;
+    /**
+     * 创建人ID
+     */
+    @ApiModelProperty(value = "创建人ID", name = "createId")
+    private Integer createId;
+
+
+    @Override
+    protected Serializable pkVal() {
+        return this.id;
+    }
+
+}

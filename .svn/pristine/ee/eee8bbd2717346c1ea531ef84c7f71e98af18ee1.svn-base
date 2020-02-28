@@ -1,0 +1,17 @@
+package com.msz.VO;
+
+import com.msz.model.MszRoom;
+import com.msz.model.MszSchedule;
+import lombok.Data;
+
+@Data
+public class ScheduleVO {
+
+    private MszSchedule schedule;
+    private MszRoom room;
+    private String tenantName;//房客名称
+    private String landlordName;//房东名称
+    private String salesmanName;//业务员名称
+    private String orgCode;//网点编号
+    private String searchName;//搜索字段
+}

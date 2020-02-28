@@ -1,0 +1,27 @@
+package com.msz.service;
+
+import com.msz.common.PagingRequest;
+import com.msz.model.MszLeaseCharge;
+import com.msz.model.MszOrderCharge;
+import com.baomidou.mybatisplus.service.IService;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+import java.util.List;
+
+/**
+ * <p>
+ * 缴费收费项目（破坏房屋设施等） 服务类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08
+ */
+public interface MszOrderChargeService extends IService<MszOrderCharge> {
+    
+
+    PageInfo<MszOrderCharge> listPage(PagingRequest pagingRequest, Wrapper wrapper);
+
+    List<MszLeaseCharge> getMoneyByLease(Integer leaseId);
+
+}

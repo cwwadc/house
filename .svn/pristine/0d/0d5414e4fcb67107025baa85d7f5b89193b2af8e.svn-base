@@ -1,0 +1,208 @@
+package com.msz.service.impl;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.VO.MessageTeamplate;
+import com.msz.VO.MszOrderInfoVo;
+import com.msz.VO.RoomStatusNumVO;
+import com.msz.common.PagingRequest;
+import com.msz.common.UserCommon;
+import com.msz.dao.*;
+import com.msz.model.*;
+import com.msz.service.MszOrderChargeService;
+import com.msz.service.MszOrderInfoService;
+import com.msz.util.DateUtil;
+import com.msz.util.MessageTeamplateUtil;
+import com.msz.util.SendMessage;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 缴费信息 服务实现类
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Service
+public class MszOrderInfoServiceImpl extends ServiceImpl<MszOrderInfoMapper, MszOrderInfo> implements MszOrderInfoService {
+
+    @Autowired
+    MszOrderInfoMapper mszOrderInfoMapper;
+    @Autowired
+    MszRoomMapper mszRoomMapper;
+    @Autowired
+    MszMessageMapper messageMapper;
+    @Autowired
+    MszAccountMapper accountMapper;
+    @Autowired
+    MszLeaseMapper leaseMapper;
+    @Autowired
+    MszOrderHistoryMapper historyMapper;
+    @Autowired
+    SysUserMapper userMapper;
+    @Autowired
+    UserCommon userCommon;
+  /*  @Autowired
+    MszArrearsMapper arrearsMapper;*/
+    @Autowired
+    MszOrderChargeService chargeService;
+
+    @Override
+    public PageInfo<MszOrderInfoVo> listPage(PagingRequest pagingRequest, String status, String endTimeBegin, String endTimeEnd, String tenantName, SysUser user) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        String role = user.getRole();
+        List<MszOrderInfoVo> list = null;
+        if (role.equals("管理员")) {
+            if (status.equals("0")) {
+                //房客未交费
+                MszOrderInfoVo vo = new MszOrderInfoVo();
+                vo.setStatus(status);
+                vo.setEndTimeBegin(endTimeBegin);
+                vo.setEndTimeEnd(endTimeEnd);
+                vo.setTenantName(tenantName);
+                list = mszOrderInfoMapper.listAll(vo);
+                for (MszOrderInfoVo mszOrderInfo : list) {
+                    mszOrderInfo.setMszRoom(mszRoomMapper.selectById(mszOrderInfo.getRoomId()));
+                }
+            }
+            if (status.equals("1")) {
+                //房客已交费
+                MszOrderInfoVo vo = new MszOrderInfoVo();
+                vo.setStatus(status);
+                vo.setEndTimeBegin(endTimeBegin);
+                vo.setEndTimeEnd(endTimeEnd);
+                vo.setTenantName(tenantName);
+                list = historyMapper.findList(vo);
+                for (MszOrderInfoVo history : list) {
+                    history.setMszRoom(mszRoomMapper.selectById(history.getRoomId()));
+                }
+            }
+        } else {
+            if (status.equals("0")) {
+                //房客未交费
+                MszOrderInfoVo vo = new MszOrderInfoVo();
+                vo.setOrgId(user.getOrgId());
+                vo.setStatus(status);
+                vo.setEndTimeBegin(endTimeBegin);
+                vo.setEndTimeEnd(endTimeEnd);
+                vo.setTenantName(tenantName);
+                list = mszOrderInfoMapper.listAll(vo);
+                for (MszOrderInfoVo mszOrderInfo : list) {
+                    mszOrderInfo.setMszRoom(mszRoomMapper.selectById(mszOrderInfo.getRoomId()));
+                }
+            }
+            if (status.equals("1")) {
+                //房客已交费
+                MszOrderInfoVo vo = new MszOrderInfoVo();
+                vo.setOrgId(user.getOrgId());
+                vo.setStatus(status);
+                vo.setEndTimeBegin(endTimeBegin);
+                vo.setEndTimeEnd(endTimeEnd);
+                vo.setTenantName(tenantName);
+                list = historyMapper.findList(vo);
+                for (MszOrderInfoVo history : list) {
+                    history.setMszRoom(mszRoomMapper.selectById(history.getRoomId()));
+                }
+            }
+        }
+         return new PageInfo<>(list);
+    }
+
+    @Override
+    public RoomStatusNumVO getCountNum(SysUser user) {
+        String role = user.getRole();
+        RoomStatusNumVO vo = new RoomStatusNumVO();
+        if (role.equals("管理员")) {
+            //缴费状态 0未缴费 1已缴费
+            vo.setHandedInNum(historyMapper.selectCount(new EntityWrapper<MszOrderHistory>().eq("status", 1)));//已交
+            vo.setUnpaidNum(mszOrderInfoMapper.selectCount(new EntityWrapper<MszOrderInfo>().eq("status", 0)));//未交
+        } else {
+            vo.setHandedInNum(historyMapper.selectCount(new EntityWrapper<MszOrderHistory>().eq("status", 1)
+                    .eq("orgId", user.getOrgId())));//已交
+            vo.setUnpaidNum(mszOrderInfoMapper.selectCount(new EntityWrapper<MszOrderInfo>().eq("status", 0)
+                    .eq("orgId", user.getOrgId())));//未交
+        }
+        return vo;
+    }
+
+    @Override
+    public boolean remind(Integer id, SysUser user) {
+
+        MszOrderInfo orderInfo = mszOrderInfoMapper.selectById(id);
+        orderInfo.setUpdateTime(new Date());
+        mszOrderInfoMapper.updateById(orderInfo);
+        if (orderInfo != null) {
+            BigDecimal total = null;
+            MszLease lease = leaseMapper.selectById(orderInfo.getLeaseId());
+            BigDecimal rentPrice = lease.getRentPrice();
+            Integer payWay = lease.getPayWay();
+            if (payWay == 0) {
+                total = rentPrice.multiply(new BigDecimal(1));
+            }
+            if (payWay == 1) {
+                total = rentPrice.multiply(new BigDecimal(3));
+            }
+            if (payWay == 2) {
+                total = rentPrice.multiply(new BigDecimal(6));
+            }
+            if (payWay == 3) {
+                total = rentPrice.multiply(new BigDecimal(12));
+            }
+            //1.租金到期、交费提醒 消息提醒
+            MszMessage message = new MszMessage();
+            message.setCreateTime(new Date());
+            message.setReceiverId(orderInfo.getTenantId());
+            message.setPromulgatorId(user.getId());
+            message.setType("1");//租约消息
+            MessageTeamplate messageTeamplate = MessageTeamplateUtil.rentExpiresLeaseTenant(total, new Date());
+            message.setTitle(messageTeamplate.getTitle());
+            message.setContentText(messageTeamplate.getContentText());
+            messageMapper.insert(message);
+            //2.租金到期、交费提醒 消息提醒 发送给业务员
+            message.setReceiverId(lease.getUserId());//业务员id
+            message.setPromulgatorId(user.getId());
+            message.setIsUser("1");
+            String tenantName = accountMapper.selectById(orderInfo.getTenantId()).getName();
+            String salesmanName = userMapper.selectById(lease.getUserId()).getTrueName();//业务员名称
+            MessageTeamplate sendMessage = SendMessage.rentExpiresLeaseSalesman(salesmanName, tenantName, total, new Date());
+            message.setTitle(sendMessage.getTitle());
+            message.setContentText(sendMessage.getContentText());
+            messageMapper.insert(message);
+            //TODO
+            //3.租金到期、交费提醒 短信提醒
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean updateOrderInfo(MszOrderInfo orderInfo) {
+        //1.修改交费信息
+        mszOrderInfoMapper.updateById(orderInfo);
+        return true;
+    }
+
+    @Override
+    public boolean receiveOrder(Integer id) {
+        MszOrderInfo mszOrderInfo = mszOrderInfoMapper.selectById(id);
+        mszOrderInfo.setStatus("1");
+        MszOrderHistory history = new MszOrderHistory();
+        BeanUtils.copyProperties(mszOrderInfo,history);
+        historyMapper.insert(history);
+        mszOrderInfoMapper.deleteById(id);
+        return true;
+    }
+
+}

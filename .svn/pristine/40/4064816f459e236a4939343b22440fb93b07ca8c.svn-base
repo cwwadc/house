@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszLeaseMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszLease">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="roomId" property="roomId"/>
+        <result column="landlordId" property="landlordId"/>
+        <result column="tenantId" property="tenantId"/>
+        <result column="userId" property="userId"/>
+        <result column="startTime" property="startTime"/>
+        <result column="endTime" property="endTime"/>
+        <result column="duePrice" property="duePrice"/>
+        <result column="contractPicture" property="contractPicture"/>
+        <result column="status" property="status"/>
+        <result column="operator" property="operator"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, roomId, landlordId, tenantId, userId, startTime, endTime, duePrice, contractPicture, status, operator, isDel, updateTime, createTime
+    </sql>
+
+    <select id="updateSpotLease" resultType="com.msz.model.MszLease">
+        UPDATE msz_lease
+        SET spotFlag = '1'
+        WHERE
+        id IN (
+        SELECT
+        a.id
+        FROM
+        (
+        SELECT
+        id
+        FROM
+        msz_lease
+        WHERE
+        `status` = '1'
+        AND DATE_SUB(endTime, INTERVAL 7 DAY) &lt;= date(CURDATE())
+        ) AS a
+        )
+    </select>
+
+    <select id="findList" resultType="com.msz.VO.LeaseReturnParamVO" parameterType="com.msz.VO.LeaseReturnParamVO">
+        SELECT
+        l.id as "id",l.no as "no",l.roomId as "roomId",l.landlordId as "landlordId",
+        l.tenantId as "tenantId",l.userId as "userId",u.trueName AS "salesmanName",
+        l.startTime as "startTime",
+        l.endTime as "endTime", l.duePrice as "duePrice",l.contractPicture as "contractPicture",
+        l.status as "status", l.operator as "operator",l.createTime as "createTime",
+        r.`name` as "roomName",r.orgId as "orgId", o.`name` AS "orgName",r.no as "roomNo",
+        r.provinceId as "provinceId",r.cityId as "cityId",
+        r.countyId as "countyId",r.townId as "townId",r.address as "address",r.area as "area",r.floor as "floor",
+        r.houseNumber as "houseNumber",r.room as "room",r.hall as "hall",r.toilet as "toilet",
+        r.whichFloor as "whichFloor", r.depositPrice as "depositPrice",r.rentPrice as "rentPrice",r.payWay as "payWay",
+        r.payType as "payType",a.phone tenantPhone, a.name as "tenantName", a.tel as "tel", a.idCard as "idCard",
+        r.community as "community"
+        FROM
+        msz_lease l
+        LEFT JOIN msz_account a ON a.id = l.tenantId
+        LEFT JOIN msz_room r ON r.id = l.roomId
+        LEFT JOIN sys_org o ON o.id = r.orgId
+        LEFT JOIN sys_user u ON u.id = l.userId
+        where 0=0
+        and l.isDel = 0
+        <if test="status != null and status != ''">
+            and l.status =#{status}
+        </if>
+        <if test="tenantName != null and tenantName != ''">
+            and a.name like "%"#{tenantName}"%"
+        </if>
+        <if test="tenantId != null and tenantId != ''">
+            and l.tenantId = #{tenantId}
+        </if>
+        <if test="landlordId != null and landlordId != ''">
+            and l.landlordId = #{landlordId}
+        </if>
+        <if test="orgId != null and orgId != ''">
+            and l.orgId = #{orgId}
+        </if>
+    </select>
+
+    <select id="getLeaseList" resultType="com.msz.VO.LeaseReturnParamVO" parameterType="com.msz.VO.LeaseReturnParamVO">
+        SELECT
+        l.id AS "id",l.no AS "no",l.roomId AS "roomId",l.landlordId AS "landlordId",
+        b.`name` AS "landlordName",
+        l.tenantId AS "tenantId",l.userId AS "userId",l.startTime AS "startTime",
+        l.endTime AS "endTime", l.duePrice AS "duePrice",l.contractPicture AS "contractPicture",
+        l.status AS "status", l.operator AS "operator",u2.trueName AS "operatorName", l.createTime AS
+        "createTime",
+        l.paidRentPrice AS "paidRentPrice",l.paidDepositPrice AS "paidDepositPrice",
+        l.billDay AS "billDay", l.collectMoneyDay AS "collectMoneyDay",l.available AS "available", l.flag AS "flag",
+        r.`name` AS "roomName",r.orgId AS "orgId",o.name AS "orgName",r.no AS "roomNo",r.provinceId AS
+        "provinceId",r.cityId AS "cityId",
+        r.countyId AS "countyId",r.townId AS "townId",r.address AS "address",r.area AS "area",r.floor AS "floor",
+        r.houseNumber AS "houseNumber",r.room AS "room",r.hall AS "hall",r.toilet AS "toilet",
+        r.whichFloor AS "whichFloor", l.depositPrice AS "depositPrice",l.rentPrice AS "rentPrice",
+        r.depositPrice AS "roomDepositPrice",r.rentPrice AS "roomRentPrice", r.payWay AS "payWay",
+        r.payType AS "payType",a.phone tenantPhone, a.name AS "tenantName", a.tel AS "tel", a.idCard AS "idCard",
+        r.community AS "community", u.trueName AS "salesmanName", o.code AS "orgCode"
+        FROM
+        msz_lease l
+        LEFT JOIN msz_account a ON a.id = l.tenantId
+        LEFT JOIN msz_account b ON b.id=l.landlordId
+        LEFT JOIN msz_room r ON r.id = l.roomId
+        LEFT JOIN sys_org o ON o.id = r.orgId
+        LEFT JOIN sys_user u ON u.id = l.userId
+        LEFT JOIN sys_user u2 ON u2.id=l.operator
+        where 0=0
+        and l.isDel = 0
+        <if test="spotFlag != null and spotFlag != ''">
+            and l.spotFlag =#{spotFlag}
+        </if>
+        <if test="status != null and status != ''">
+            and l.status =#{status}
+        </if>
+        <if test="tenantName != null and tenantName != ''">
+            and a.name like "%"#{tenantName}"%" or u.trueName like "%"#{tenantName}"%"
+        </if>
+        <if test="orgId != null and orgId != ''">
+            and r.orgId =#{orgId}
+        </if>
+    </select>
+
+    <select id="getLeaseNum" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM msz_lease l
+        LEFT JOIN msz_room r on r.id=l.roomId
+        WHERE l.`status`= #{status}
+        <if test="orgId != null and orgId != ''">
+            AND r.orgId= #{orgId}
+        </if>
+    </select>
+
+    <select id="getSpotLeaseNum" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM msz_lease l
+        LEFT JOIN msz_room r on r.id=l.roomId
+        WHERE l.spotFlag= #{spotFlag}
+        <if test="orgId != null and orgId != ''">
+            AND r.orgId= #{orgId}
+        </if>
+    </select>
+
+    <select id="getLeaseDesc" resultType="com.msz.VO.LeaseReturnParamVO">
+		SELECT
+        l.id AS "id",
+        l.no AS "no",
+        l.roomId AS "roomId",
+        l.landlordId AS "landlordId",
+        b.`name` AS "landlordName",
+        l.tenantId AS "tenantId",
+        l.userId AS "userId",
+        l.startTime AS "startTime",
+        l.endTime AS "endTime",
+        l.duePrice AS "duePrice",
+        l.contractPicture AS "contractPicture",
+        l.status AS "status",
+        l.operator AS "operator",
+        u2.trueName AS "operatorName",
+        l.createTime AS "createTime",
+        r.`name` AS "roomName",
+        r.orgId AS "orgId",
+        r.no AS "roomNo",
+        r.provinceId AS "provinceId",
+        r.cityId AS "cityId",
+        r.countyId AS "countyId",
+        r.townId AS "townId",
+        r.address AS "address",
+        r.area AS "area",
+        r.floor AS "floor",
+        r.houseNumber AS "houseNumber",
+        r.room AS "room",
+        r.hall AS "hall",
+        r.toilet AS "toilet",
+        r.whichFloor AS "whichFloor",
+        l.depositPrice AS "depositPrice",
+        l.paidDepositPrice AS "paidDepositPrice",
+        l.rentPrice AS "rentPrice",
+        l.paidRentPrice AS "paidRentPrice",
+        r.payWay AS "payWay",
+        r.payType AS "payType",
+        a.phone tenantPhone,
+        a.name AS "tenantName",
+        a.tel AS "tel",
+        a.idCard AS "idCard",
+        r.community AS "community",
+        u.trueName AS "salesmanName",
+        o.code AS "orgCode"
+        FROM
+        msz_lease l
+        LEFT JOIN msz_account a ON a.id = l.tenantId
+        LEFT JOIN msz_account b ON b.id=l.landlordId
+        LEFT JOIN msz_room r ON r.id = l.roomId
+        LEFT JOIN sys_org o ON o.id = r.orgId
+        LEFT JOIN sys_user u ON u.id = l.userId
+        LEFT JOIN sys_user u2 ON u2.id=l.operator
+		where l.id =#{id}
+	</select>
+
+    <select id="leaseByTenantId" resultType="java.util.Map">
+        SELECT
+        	ml.id,
+            ml.no,
+            ml.status,
+            ml.startTime,
+			ml.depositPrice,
+			ma.name,
+			ma.id tenantId,
+			mr.telId,
+            ml.isRefundMoney,
+            ml.contractPicture,
+            ml.createTime,
+            ml.endTime,
+            mr.address
+        FROM
+            msz_lease ml
+            LEFT JOIN msz_room mr ON ml.roomId = mr.id
+			LEFT JOIN msz_account ma ON ml.tenantId = ma.id
+        WHERE
+            ml.tenantId = #{id}
+            AND ml.isDel = '0'
+        ORDER BY ml.createTime desc
+    </select>
+
+    <select id="signLeaseByTenantId" resultType="com.msz.model.MszLease">
+		SELECT * FROM msz_lease WHERE tenantId=#{tenantId}
+		AND id IN(
+		SELECT id FROM msz_lease
+		WHERE `status` =0 OR `status` = 1
+		 )
+    </select>
+
+    <select id="getMszLeaseListByUser" resultType="com.msz.VO.AchievementVo">
+        SELECT
+        mr. NO AS houseNo,
+        mr.telName,
+        mr.community,
+        mr.houseName,
+        mr.houseNumber,
+        ml.rentPrice,
+        ml.startTime,
+        ml.endTime,
+        ml.createTime,
+        ma.`name` AS tenantName,
+        ma.phone AS tenantPhone
+        FROM
+        msz_lease ml
+        LEFT JOIN (
+        SELECT
+        room.*, account. NAME AS telName
+        FROM
+        msz_room room,
+        msz_account account
+        WHERE
+        room.telId = account.id
+        AND account.type = 1
+        ) mr ON mr.id = ml.roomId
+        LEFT JOIN msz_account ma ON ma.id = ml.tenantId AND ma.type = 2
+        WHERE
+        ml.userId = #{userId}
+        AND ml.isDel = '0'
+        <if test="type==0">
+            AND DATE_FORMAT(ml.createTime, '%Y-%c') = DATE_FORMAT(NOW(), '%Y-%c')
+        </if>
+        ORDER BY ml.createTime desc
+        <if test="start!=0 and size!=0">
+            LIMIT #{start},#{size}
+        </if>
+    </select>
+
+    <select id="getMszLeaseListByUserSums" resultType="java.lang.Integer">
+        SELECT
+        COUNT(1)
+        FROM
+        msz_lease ml
+        LEFT JOIN (
+        SELECT
+        room.*, account. NAME AS telName
+        FROM
+        msz_room room,
+        msz_account account
+        WHERE
+        room.telId = account.id
+        AND account.type = 1
+        ) mr ON mr.id = ml.roomId
+        LEFT JOIN msz_account ma ON ma.id = ml.tenantId AND ma.type = 2
+        WHERE
+        ml.userId = #{userId}
+        AND ml.isDel = '0'
+        <if test="type==0">
+            AND DATE_FORMAT(ml.createTime, '%Y-%c') = DATE_FORMAT(NOW(), '%Y-%c')
+        </if>
+    </select>
+
+</mapper>

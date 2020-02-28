@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszScheduleMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszSchedule">
+		<id column="id" property="id" />
+		<result column="room_id" property="roomId" />
+		<result column="schedule_start_time" property="scheduleStartTime" />
+		<result column="schedule_end_time" property="scheduleEndTime" />
+		<result column="schedule_price" property="schedulePrice" />
+		<result column="paid_amount" property="paidAmount" />
+		<result column="available" property="available" />
+		<result column="is_del" property="isDel" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        s.id, s.room_id AS roomId, s.schedule_start_time AS scheduleStartTime, s.schedule_end_time AS scheduleEndTime,
+        s.paid_amount AS paidAmount, s.is_del AS isDel, s.create_time AS createTime
+    </sql>
+
+	<select id="findList" resultType="com.msz.VO.LeaseReturnParamVO" parameterType="com.msz.VO.LeaseReturnParamVO">
+		SELECT s.id AS "scheduleId", s.room_id AS "roomId", s.schedule_start_time AS  "scheduleStartTime",
+		s.schedule_end_time AS "scheduleEndTime", s.paid_amount AS "paidAmount",
+		s.tenant_id AS "tenantId", b.name AS "tenantName",b.tel AS "tel",b.idCard AS "idCard",
+		s.user_id AS "userId", u.trueName AS "salesmanName",
+		s.create_time AS "scheduleCreateTime",r.`name` AS "name",
+		r.telId AS "landlordId", a.name AS "landlordName", r.orgId AS "orgId", o.code AS "orgCode",o.name AS "orgName",
+		r.no AS "roomNo",r.provinceId AS "provinceId",r.cityId AS "cityId",
+		r.countyId AS "countyId",r.townId AS "townId",r.address AS "address",r.area AS "area",r.floor AS "floor",
+		r.houseNumber AS "houseNumber",r.room AS "room",r.hall AS "hall",r.toilet AS "toilet",
+		r.whichFloor AS "whichFloor", r.depositPrice AS "depositPrice",r.rentPrice AS "rentPrice",r.payWay AS "payWay",
+		r.payType AS "payType",r.community AS "community"
+		FROM msz_schedule s
+		LEFT JOIN msz_room r on r.id = s.room_id
+		LEFT JOIN msz_account a ON a.id = r.telId
+		LEFT JOIN sys_org o ON r.orgId = o.id
+		LEFT JOIN msz_account b ON s.tenant_id = b.id
+		LEFT JOIN sys_user u ON s.user_id = u.id
+		WHERE s.is_del='0' AND r.`status` = '1'
+		<if test="tenantName != null and tenantName != ''">
+			and b.name like "%"#{tenantName}"%" or u.trueName like "%"#{tenantName}"%"
+		</if>
+		<if test="orgId != null and orgId != ''">
+			and r.orgId =#{orgId}
+		</if>
+	</select>
+
+	<select id="getSchedule" resultType="com.msz.model.MszSchedule">
+	  SELECT
+		s.id,
+		s.room_id AS roomId,
+		s.schedule_start_time AS scheduleStartTime,
+		s.schedule_end_time AS scheduleEndTime,
+		s.paid_amount AS paidAmount,
+		s.is_del AS isDel,
+		s.create_time AS createTime ,a.tel AS "tenantTel",
+		a.`name` AS "tenantName"
+	FROM
+		msz_schedule s
+	LEFT JOIN msz_account a ON s.tenant_id = a.id
+	WHERE
+		s.id = #{id}
+	</select>
+
+	<select id="getScheduleNum" resultType="java.lang.Integer">
+		SELECT COUNT(*) FROM msz_schedule s
+		LEFT JOIN msz_room r ON s.room_id = r.id
+		WHERE s.is_del = '0'
+		<if test="orgId != null and orgId != ''">
+			AND r.orgId= #{orgId}
+		</if>
+	</select>
+</mapper>

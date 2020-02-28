@@ -1,0 +1,423 @@
+package com.msz.service.impl;
+
+import com.aliyuncs.exceptions.ClientException;
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.VO.*;
+import com.msz.common.PagingRequest;
+import com.msz.common.UserCommon;
+import com.msz.dao.*;
+import com.msz.model.*;
+import com.msz.service.*;
+import com.msz.util.*;
+import net.bytebuddy.implementation.auxiliary.AuxiliaryType;
+import org.apache.velocity.runtime.directive.Foreach;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+
+/**
+ * <p>
+ * 租约 服务实现类
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Service
+public class MszLeaseServiceImpl extends ServiceImpl<MszLeaseMapper, MszLease> implements MszLeaseService {
+
+
+    MszLeaseMapper mszLeaseMapper;
+    SysCityMapper sysCityMapper;
+    MszRoomMapper mszRoomMapper;
+    MszOrderInfoMapper mszOrderInfoMapper;
+    MszMessageMapper messageMapper;
+    MszRefundInfoMapper refundInfoMapper;
+    MszAccountMapper accountMapper;
+    SysOrgMapper orgMapper;
+
+    @Autowired
+    public MszLeaseServiceImpl(MszLeaseMapper mszLeaseMapper, SysCityMapper sysCityMapper, MszRoomMapper mszRoomMapper,
+                               MszOrderInfoMapper mszOrderInfoMapper, MszMessageMapper messageMapper, MszRefundInfoMapper refundInfoMapper, MszAccountMapper accountMapper, SysOrgMapper orgMapper) {
+        this.mszLeaseMapper = mszLeaseMapper;
+        this.sysCityMapper = sysCityMapper;
+        this.mszRoomMapper = mszRoomMapper;
+        this.mszOrderInfoMapper = mszOrderInfoMapper;
+        this.messageMapper = messageMapper;
+        this.refundInfoMapper = refundInfoMapper;
+        this.accountMapper = accountMapper;
+        this.orgMapper = orgMapper;
+    }
+
+    /**
+     * @Author Maoyy
+     * @Description 代码写了一行又一行
+     * @Date 19:10 2019/6/13
+     **/
+    @Autowired
+    private MszAccountService mszAccountService;
+    @Autowired
+    private MszRoomService mszRoomService;
+    @Autowired
+    private MszOrderInfoService mszOrderInfoService;
+    @Autowired
+    private SysUserService sysUserService;
+    @Autowired
+    UserCommon userCommon;
+    @Autowired
+    MszLeaseChargeService leaseChargeService;
+
+    /**
+     * 租约列表
+     *
+     * @param status
+     * @return
+     */
+    @Override
+    public PageInfo<LeaseReturnParamVO> listPage(PagingRequest pagingRequest, String status, String tenantName, SysUser user) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        List<LeaseReturnParamVO> leaseList;
+        String role = user.getRole();
+        LeaseReturnParamVO returnParamVO = new LeaseReturnParamVO();
+        if (role.equals("管理员")) {
+            returnParamVO.setStatus(status);
+            returnParamVO.setTenantName(tenantName);
+            leaseList = mszLeaseMapper.getLeaseList(returnParamVO);
+            if (leaseList != null && leaseList.size() > 0) {
+                leaseList.forEach(item -> {
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        } else {
+            returnParamVO.setOrgId(user.getOrgId());
+            returnParamVO.setStatus(status);
+            returnParamVO.setTenantName(tenantName);
+            leaseList = mszLeaseMapper.getLeaseList(returnParamVO);
+            if (leaseList != null && leaseList.size() > 0) {
+                leaseList.forEach(item -> {
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        }
+        return new PageInfo<>(leaseList);
+    }
+
+    /**
+     * 新增租约
+     *
+     * @param leaseParamVO
+     * @return
+     */
+    @Override
+    public boolean insertMszLease(LeaseParamVO leaseParamVO, SysUser user) {
+
+        //1.新增租约
+        MszLease mszLease = new MszLease();
+        String leaseNo = UUIDUtils.getOrderIdByTime();
+        mszLease.setNo(leaseNo);
+        mszLease.setPayWay(leaseParamVO.getPayWay());//付款方式
+        mszLease.setRentPrice(new BigDecimal(leaseParamVO.getRentPrice()));//租金
+        mszLease.setPaidRentPrice(leaseParamVO.getPaidRentPrice());//实收租金
+        mszLease.setDepositPrice(new BigDecimal(leaseParamVO.getDepositPrice()));//押金
+        mszLease.setPaidDepositPrice(leaseParamVO.getPaidDepositPrice());//实收押金
+        mszLease.setBillDay(leaseParamVO.getBillDay());//账单日
+        mszLease.setCollectMoneyDay(leaseParamVO.getCollectMoneyDay());//租金交费日
+        mszLease.setAvailable(leaseParamVO.getAvailable());//应用到每期交费
+        mszLease.setFlag(leaseParamVO.getFlag());//修改金额提醒
+        mszLease.setStartTime(leaseParamVO.getStartTime());
+        mszLease.setEndTime(leaseParamVO.getEndTime());
+        mszLease.setOperator(user.getId());
+        mszLease.setContractPicture(leaseParamVO.getContractPicture());
+        mszLease.setCreateTime(leaseParamVO.getCreateTime());
+        mszLease.setLandlordId(leaseParamVO.getLandlordId());
+        mszLease.setTenantId(leaseParamVO.getTenantId());
+        mszLease.setUserId(leaseParamVO.getUserId());
+        mszLease.setRoomId(leaseParamVO.getRoomId());
+//        Integer payWay = leaseParamVO.getPayWay();
+        //付款方式(0: 月付  1 季付 2: 半年付 3: 一年付  )
+//        BigDecimal duePrice = null;
+//        if (payWay == 0) {
+//            duePrice = new BigDecimal(leaseParamVO.getRentPrice()).add(new BigDecimal(leaseParamVO.getDepositPrice()));
+//        }
+//        if (payWay == 1) {
+//            duePrice = new BigDecimal(leaseParamVO.getRentPrice()).multiply(new BigDecimal(3)).add(new BigDecimal(leaseParamVO.getDepositPrice()));
+//        }
+//        if (payWay == 2) {
+//            duePrice = new BigDecimal(leaseParamVO.getRentPrice()).multiply(new BigDecimal(6)).add(new BigDecimal(leaseParamVO.getDepositPrice()));
+//        }
+//        if (payWay == 3) {
+//            duePrice = new BigDecimal(leaseParamVO.getRentPrice()).multiply(new BigDecimal(12)).add(new BigDecimal(leaseParamVO.getDepositPrice()));
+//        }
+//        mszLease.setDuePrice(duePrice);
+        mszLease.setOrgId(leaseParamVO.getOrgId());
+        mszLeaseMapper.insert(mszLease);
+        //添加租约其他收费项
+        BigDecimal receiveTotal = new BigDecimal(leaseParamVO.getRentPrice()).add(new BigDecimal(leaseParamVO.getDepositPrice()));//应收总费用
+        BigDecimal paidTotal = leaseParamVO.getPaidRentPrice().add(leaseParamVO.getPaidDepositPrice());//实收总费用
+        BigDecimal oweTotal = receiveTotal.subtract(paidTotal);//欠收总费用
+        if (leaseParamVO.getLeaseChargeList() == null || leaseParamVO.getLeaseChargeList().size() > 0){
+            List<MszLeaseCharge> leaseChargeList = leaseParamVO.getLeaseChargeList();
+            BigDecimal chargeTotal = null;
+            for (MszLeaseCharge mszLeaseCharge : leaseChargeList) {
+                chargeTotal.add(mszLeaseCharge.getChargePrice());
+                mszLeaseCharge.setLeaseId(mszLease.getId());
+            }
+            leaseChargeService.insertBatch(leaseChargeList);
+            receiveTotal = receiveTotal.add(chargeTotal);
+            paidTotal = paidTotal.add(chargeTotal);
+            oweTotal = receiveTotal.subtract(paidTotal);
+        }
+        //3.新增交费信息
+        MszOrderInfo mszOrderInfo = new MszOrderInfo();
+        mszOrderInfo.setOrgId(leaseParamVO.getOrgId());//
+        mszOrderInfo.setRoomId(leaseParamVO.getRoomId());
+        mszOrderInfo.setCreateTime(new Date());
+        mszOrderInfo.setLeaseId(mszLease.getId());//获取插入后生成主键租约id
+        mszOrderInfo.setRentPrice(new BigDecimal(leaseParamVO.getRentPrice()));//租金
+        mszOrderInfo.setPaidRentPrice(leaseParamVO.getPaidRentPrice());//实收租金
+        mszOrderInfo.setDepositPrice(new BigDecimal(leaseParamVO.getDepositPrice()));//押金
+        mszOrderInfo.setPaidDepositPrice(leaseParamVO.getPaidDepositPrice());//实收押金
+        mszOrderInfo.setBillDay(leaseParamVO.getBillDay());//账单日
+        mszOrderInfo.setCollectMoneyDay(leaseParamVO.getCollectMoneyDay());//租金交费日
+        mszOrderInfo.setAvailable(leaseParamVO.getAvailable());//应用到每期交费
+        mszOrderInfo.setFlag(leaseParamVO.getFlag());//修改金额提醒
+
+//        mszOrderInfo.setTotal(duePrice);
+        String orderNo = UUIDUtils.getOrderIdByTime();
+        mszOrderInfo.setNo(orderNo);//缴费编号
+        mszOrderInfo.setTenantId(leaseParamVO.getTenantId());//房客ID(电话号码)
+        mszOrderInfo.setLandlordId(leaseParamVO.getLandlordId());//房东ID
+        mszOrderInfo.setEndTime(leaseParamVO.getEndTime());//结束时间
+        mszOrderInfo.setReceiveTotal(receiveTotal);
+        mszOrderInfo.setPaidTotal(paidTotal);
+        mszOrderInfo.setOweTotal(oweTotal);
+        mszOrderInfoMapper.insert(mszOrderInfo);
+        return true;
+//        //4.把修改的房源id锁定48小时
+//        Integer roomId = leaseParamVO.getRoomId();
+//        MszRoom mszRoom = new MszRoom();
+//        mszRoom.setId(roomId);
+//        mszRoom.setStatus("1");//已租
+//        mszRoom.setIsLock("1");//已锁定
+//        //设置最后锁定时间
+//        long currentTime = System.currentTimeMillis() + 48 * 60 * 60 * 1000;
+//        Date date = new Date(currentTime);
+//        mszRoom.setEndTime(date);
+//        mszRoomMapper.updateById(mszRoom);
+//        //5.推送信息给房客
+//        MszMessage message = new MszMessage();
+//        MszAccount account1 = accountMapper.selectById(leaseParamVO.getTenantId());
+//        String tenantName = account1.getName();
+//        MessageTeamplate teamplate = MessageTeamplateUtil.insertLeaseTenant(tenantName, leaseNo, new BigDecimal(leaseParamVO.getRentPrice()), new BigDecimal(leaseParamVO.getDepositPrice()),duePrice);
+//        message.setTitle(teamplate.getTitle());
+//        message.setCreateTime(new Date());
+//        message.setReceiverId(leaseParamVO.getTenantId());
+//        message.setPromulgatorId(user.getId());
+//        message.setType("1");//租约消息
+//        message.setContentText(teamplate.getContentText());
+//        messageMapper.insert(message);
+//        //6.发送短信给房客
+//        Map<String, Object> map = new HashMap<>();
+//        map.put("leaseNo",leaseNo);
+//        map.put("rentPrice",leaseParamVO.getRentPrice());
+//        map.put("depositPrice",leaseParamVO.getDepositPrice());
+//        map.put("total",duePrice);
+//        try {
+//            MoblieMessageUtil.sendSms( account1.getTel(), map,  "SMS_171540935");
+//        } catch (ClientException e) {
+//            e.printStackTrace();
+//        }
+//        //TODO
+//        //7.推送信息给业务员
+//        MszMessage message3 = new MszMessage();
+//        String salesmanName = sysUserService.selectById(leaseParamVO.getUserId()).getTrueName();
+//        MessageTeamplate sendMessage = SendMessage.insertLeaseSalesman(salesmanName, tenantName, leaseNo, new BigDecimal(leaseParamVO.getRentPrice()), new BigDecimal(leaseParamVO.getDepositPrice()),duePrice);
+//        message3.setTitle(sendMessage.getTitle());
+//        message3.setContentText(sendMessage.getContentText());
+//        message3.setCreateTime(new Date());
+//        message3.setReceiverId(leaseParamVO.getUserId());
+//        message3.setPromulgatorId(user.getId());
+//        message3.setIsUser("1");
+//        message3.setType("1");//租约消息
+//        messageMapper.insert(message3);
+//        //8.推送信息给房东
+//        MszMessage message2 = new MszMessage();
+//        MszAccount account2 = accountMapper.selectById(leaseParamVO.getLandlordId());
+//        MszRoom mszRoom1 = mszRoomMapper.selectById(leaseParamVO.getRoomId());
+//        String orgName = orgMapper.selectById(mszRoom1.getOrgId()).getName();
+//        MessageTeamplate teamplate2 = MessageTeamplateUtil.insertLeaseByLandlord(account2.getName(), mszRoom1.getAddress(), account1.getName(), orgName);
+//        message2.setTitle(teamplate2.getTitle());
+//        message2.setCreateTime(new Date());
+//        message2.setReceiverId(leaseParamVO.getLandlordId());
+//        message2.setPromulgatorId(user.getId());
+//        message2.setType("1");//租约消息
+//        message2.setContentText(teamplate2.getContentText());
+//        messageMapper.insert(message2);
+
+    }
+
+    /*  *//**
+     * 修改租约
+     *
+     * @param leaseParamVO
+     * @return
+     *//*
+    @Override
+    public boolean updateMszLease(LeaseParamVO leaseParamVO) {
+
+        //1.修改房客信息
+        MszAccount account = new MszAccount();
+        account.setId(leaseParamVO.getTenantId());
+        account.setTel(leaseParamVO.getTel());
+        account.setIdCard(leaseParamVO.getIdCard());
+        account.setName(leaseParamVO.getTenantName());
+        accountMapper.updateById(account);
+        if (leaseParamVO.getTerminationTime() != null) {
+            //2.提前终止合同 把租约状态改为异常
+            MszLease lease = new MszLease();
+            lease.setId(leaseParamVO.getId());
+            lease.setStatus("3");
+            mszLeaseMapper.updateById(lease);
+            //3.并生成退款记录
+            MszRefundInfo refundInfo = new MszRefundInfo();
+            refundInfo.setCreateTime(new Date());
+            refundInfo.setApplyTime(new Date());
+            refundInfo.setDepositPrice(mszRoomMapper.selectById(leaseParamVO.getRoomId()).getDepositPrice());
+            //租金默认为0
+            refundInfo.setRentPrice(new BigDecimal(0));
+            refundInfo.setTotal(new BigDecimal(0).add(mszRoomMapper.selectById(leaseParamVO.getRoomId()).getDepositPrice()));
+            refundInfo.setLeaseId(leaseParamVO.getId());
+            String refundNo = "T" + DateUtil.getDayStr(new Date(), "yyyyMMdd") + RandomUtil.getRandomStr(6);
+            refundInfo.setNo(refundNo);
+            refundInfo.setUserId(leaseParamVO.getUserId());
+            refundInfo.setTenantId(leaseParamVO.getTenantId());
+            refundInfoMapper.insert(refundInfo);
+        }
+        return true;
+    }*/
+
+    /**
+     * 查看租约
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public LeaseReturnParamVO getMszLeaseById(Integer id) {
+        LeaseReturnParamVO leaseDesc = mszLeaseMapper.getLeaseDesc(id);
+        leaseDesc.setProvince(leaseDesc.getProvinceId() == null ? "" : sysCityMapper.selectById(leaseDesc.getProvinceId().toString()).getName()); //省份名称
+        leaseDesc.setCity(leaseDesc.getCityId() == null ? "" : sysCityMapper.selectById(leaseDesc.getCityId().toString()).getName()); //城市名称
+        leaseDesc.setCounty(leaseDesc.getCountyId() == null ? "" : sysCityMapper.selectById(leaseDesc.getCountyId().toString()).getName()); //区县名称
+        leaseDesc.setTown(leaseDesc.getTownId() == null ? "" : sysCityMapper.selectById(leaseDesc.getTownId().toString()).getName()); //街道名称
+        return leaseDesc;
+    }
+
+
+    @Override
+    public TenantIdAndUserIdVO tenantIdAndUserId(Integer tenantId, Integer userId) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        vo.setMszLease(selectOne(new EntityWrapper<MszLease>().eq("tenantId", tenantId).eq("userId", userId)));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Override
+    public TenantIdAndUserIdVO byTenantId(Integer id) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        vo.setMszLease(selectOne(new EntityWrapper<MszLease>().eq("tenantId", id).andNew().eq("`status`", "1").or().eq("`status`", "0")));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        if (vo.getMszLease().getOperator() != null) {
+            vo.setOperator(sysUserService.selectById(vo.getMszLease().getOperator()).getTrueName());
+        }
+        vo.setOrderInfo(mszOrderInfoService.selectOne(new EntityWrapper<MszOrderInfo>().eq("leaseId", vo.getMszLease().getId())));
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Override
+    public TenantIdAndUserIdVO byId(Integer id) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        vo.setMszLease(selectOne(new EntityWrapper<MszLease>().eq("id", id)));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        if (vo.getMszLease().getOperator() != null) {
+            SysUser operator = sysUserService.selectOne(new EntityWrapper<SysUser>().eq("id", vo.getMszLease().getOperator()));
+            if (operator != null) {
+                vo.setOperator(operator.getTrueName() == null ? "未填写姓名" : operator.getTrueName());
+            }
+        }
+        vo.setOrderInfo(mszOrderInfoService.selectOne(new EntityWrapper<MszOrderInfo>().eq("leaseId", vo.getMszLease().getId())));
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Override
+    public List<WeProgramLeaseListVO> leaseByTenantId(Integer id) {
+        return mszLeaseMapper.leaseByTenantId(id);
+    }
+
+    @Override
+    public LeaseNumVO getCountNum(SysUser user) {
+        String role = user.getRole();
+        LeaseNumVO vo = new LeaseNumVO();
+        Integer orgId = user.getOrgId();
+        if (role.equals("管理员")) {
+            vo.setAppointmentNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "0")));
+            vo.setExecuteNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "1")));
+            vo.setEndNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "2")));
+            vo.setExceptionNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "3")));
+        } else {
+            vo.setAppointmentNum(mszLeaseMapper.getLeaseNum("0", orgId));
+            vo.setExecuteNum(mszLeaseMapper.getLeaseNum("1", orgId));
+            vo.setEndNum(mszLeaseMapper.getLeaseNum("2", orgId));
+            vo.setExceptionNum(mszLeaseMapper.getLeaseNum("3", orgId));
+        }
+
+        return vo;
+    }
+
+    @Override
+    public List<MszLease> signLeaseByTenantId(Integer tenantId) {
+
+        return mszLeaseMapper.signLeaseByTenantId(tenantId);
+    }
+}

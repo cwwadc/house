@@ -1,0 +1,208 @@
+package com.msz.common;
+
+import com.aliyuncs.exceptions.ClientException;
+import com.msz.VO.MessageTeamplate;
+import com.msz.dao.*;
+import com.msz.model.*;
+import com.msz.service.SysUserService;
+import com.msz.util.MessageTeamplateUtil;
+import com.msz.util.MoblieMessageUtil;
+import com.msz.util.SendMessage;
+import com.msz.util.UUIDUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class LeaseCommon {
+
+    @Autowired
+    MszOrderInfoMapper mszOrderInfoMapper;
+    @Autowired
+    MszAccountMapper accountMapper;
+    @Autowired
+    MszRoomMapper mszRoomMapper;
+    @Autowired
+    SysUserService sysUserService;
+    @Autowired
+    SysOrgMapper orgMapper;
+    @Autowired
+    MszMessageMapper messageMapper;
+
+
+    /**
+     * 添加交费信息
+     * @param lease
+     * @param receiveTotal
+     */
+    public void insertOrderInfo(MszLease lease, BigDecimal receiveTotal) {
+        //3.生成交费信息
+        MszOrderInfo mszOrderInfo = new MszOrderInfo();
+        mszOrderInfo.setOrgId(lease.getOrgId());//
+        mszOrderInfo.setRoomId(lease.getRoomId());
+        mszOrderInfo.setCreateTime(new Date());
+        mszOrderInfo.setLeaseId(lease.getId());//获取插入后生成主键租约id
+        mszOrderInfo.setRentPrice(lease.getPaidRentPrice());//租金
+        mszOrderInfo.setDepositPrice(lease.getPaidDepositPrice());//押金
+        mszOrderInfo.setBillDay(lease.getBillDay());//账单日
+        mszOrderInfo.setCollectMoneyDay(lease.getCollectMoneyDay());//租金交费日
+        mszOrderInfo.setAvailable(lease.getAvailable());//应用到每期交费
+        mszOrderInfo.setFlag(lease.getFlag());//修改金额提醒
+        String orderNo = UUIDUtils.getOrderIdByTime();
+        mszOrderInfo.setNo(orderNo);//缴费编号
+        mszOrderInfo.setTenantId(lease.getTenantId());//房客ID(电话号码)
+        mszOrderInfo.setLandlordId(lease.getLandlordId());//房东ID
+        mszOrderInfo.setEndTime(lease.getEndTime());//结束时间
+        mszOrderInfo.setReceiveTotal(receiveTotal);
+        // 判断是否欠租
+        //新建的你他妈判断你馬的欠费
+//        boolean flag =  isArrears(lease, receiveTotal, mszOrderInfo);
+//        if (flag){
+//            mszOrderInfo.setArrearsFlag("1");// 欠租提示
+//        }
+        mszOrderInfoMapper.insert(mszOrderInfo);
+    }
+
+    /**
+     * 修改交费信息
+     * @param lease
+     * @param receiveTotal
+     * @param mszOrderInfo
+     */
+    public void updateOrderInfo(MszLease lease, BigDecimal receiveTotal, MszOrderInfo mszOrderInfo) {
+        mszOrderInfo.setOrgId(lease.getOrgId());
+        mszOrderInfo.setRoomId(lease.getRoomId());
+        mszOrderInfo.setUpdateTime(new Date());
+        mszOrderInfo.setLeaseId(lease.getId());//获取插入后生成主键租约id
+        mszOrderInfo.setRentPrice(lease.getRentPrice());//租金
+        mszOrderInfo.setDepositPrice(lease.getDepositPrice());//押金
+        mszOrderInfo.setBillDay(lease.getBillDay());//账单日
+        mszOrderInfo.setCollectMoneyDay(lease.getCollectMoneyDay());//租金交费日
+        mszOrderInfo.setAvailable(lease.getAvailable());//应用到每期交费
+        mszOrderInfo.setFlag(lease.getFlag());//修改金额提醒
+        mszOrderInfo.setTenantId(lease.getTenantId());//房客ID
+        mszOrderInfo.setLandlordId(lease.getLandlordId());//房东ID
+        mszOrderInfo.setEndTime(lease.getEndTime());//结束时间
+        mszOrderInfo.setReceiveTotal(receiveTotal);
+        // 判断是否欠租
+        boolean flag =  isArrears(lease, receiveTotal, mszOrderInfo);
+        if (flag){
+            mszOrderInfo.setArrearsFlag("1");// 欠租提示
+        }
+        mszOrderInfoMapper.updateById(mszOrderInfo);
+    }
+
+    /**
+     * 应用到每一期交费
+     * @param lease
+     */
+    public void insertApplyOrderInfo(MszLease lease) {
+        BigDecimal receiveTotal = lease.getPaidRentPrice().add(lease.getPaidDepositPrice());
+        //3.生成交费信息
+        MszOrderInfo mszOrderInfo = new MszOrderInfo();
+        mszOrderInfo.setOrgId(lease.getOrgId());//
+        mszOrderInfo.setRoomId(lease.getRoomId());
+        mszOrderInfo.setCreateTime(new Date());
+        mszOrderInfo.setLeaseId(lease.getId());//获取插入后生成主键租约id
+        mszOrderInfo.setBillDay(lease.getBillDay());//账单日
+        mszOrderInfo.setCollectMoneyDay(lease.getCollectMoneyDay());//租金交费日
+        mszOrderInfo.setAvailable(lease.getAvailable());//应用到每期交费
+        if (lease.getAvailable().equals("1")){
+            // 应用到每一期
+            mszOrderInfo.setRentPrice(lease.getPaidRentPrice());// 应用到每一期租金
+            mszOrderInfo.setDepositPrice(lease.getPaidDepositPrice());// 应用到每一期押金
+        }else if (lease.getAvailable().equals("0")){
+            mszOrderInfo.setRentPrice(lease.getRentPrice());// 租金
+            mszOrderInfo.setDepositPrice(lease.getDepositPrice());// 押金
+        }
+        mszOrderInfo.setFlag(lease.getFlag());//修改金额提醒
+        String orderNo = UUIDUtils.getOrderIdByTime();
+        mszOrderInfo.setNo(orderNo);//缴费编号
+        mszOrderInfo.setTenantId(lease.getTenantId());//房客ID(电话号码)
+        mszOrderInfo.setLandlordId(lease.getLandlordId());//房东ID
+        mszOrderInfo.setEndTime(lease.getEndTime());//结束时间
+        mszOrderInfo.setReceiveTotal(receiveTotal);
+        // 判断是否欠租
+        boolean flag =  isArrears(lease, receiveTotal, mszOrderInfo);
+        if (flag){
+            mszOrderInfo.setArrearsFlag("1");// 欠租提示
+        }
+        mszOrderInfoMapper.insert(mszOrderInfo);
+    }
+
+    /**
+     * 新建租约 推送消息
+     * @param lease
+     * @param leaseNo
+     * @param receiveTotal
+     */
+    public void sendMessage(MszLease lease, String leaseNo, BigDecimal receiveTotal) {
+        //1.推送信息给房客
+        MszMessage message = new MszMessage();
+        MszAccount account1 = accountMapper.selectById(lease.getTenantId());
+        String tenantName = account1.getName();
+        MessageTeamplate teamplate = MessageTeamplateUtil.insertLeaseTenant(tenantName, leaseNo, lease.getRentPrice(), lease.getDepositPrice(), receiveTotal);
+        message.setTitle(teamplate.getTitle());
+        message.setCreateTime(new Date());
+        message.setReceiverId(lease.getTenantId());
+        message.setType("1");//租约消息
+        message.setContentText(teamplate.getContentText());
+        messageMapper.insert(message);
+        //2.发送短信给房客
+        Map<String, Object> map = new HashMap<>();
+        map.put("leaseNo", leaseNo);
+        map.put("rentPrice", lease.getRentPrice());
+        map.put("depositPrice", lease.getDepositPrice());
+        map.put("total", receiveTotal);
+        try {
+            MoblieMessageUtil.sendSms(account1.getTel(), map, "SMS_171540935");
+        } catch (ClientException e) {
+            e.printStackTrace();
+        }
+        //5.推送信息给业务员
+        MszMessage message3 = new MszMessage();
+        String salesmanName = sysUserService.selectById(lease.getUserId()).getTrueName();
+        MessageTeamplate sendMessage = SendMessage.insertLeaseSalesman(salesmanName, tenantName, leaseNo, lease.getRentPrice(), lease.getDepositPrice(), receiveTotal);
+        message3.setTitle(sendMessage.getTitle());
+        message3.setContentText(sendMessage.getContentText());
+        message3.setCreateTime(new Date());
+        message3.setReceiverId(lease.getUserId());
+        message3.setIsUser("1");
+        message3.setType("1");//租约消息
+        messageMapper.insert(message3);
+        //3.推送信息给房东
+        MszMessage message2 = new MszMessage();
+        MszAccount account2 = accountMapper.selectById(lease.getLandlordId());
+        MszRoom mszRoom1 = mszRoomMapper.selectById(lease.getRoomId());
+        String orgName = orgMapper.selectById(mszRoom1.getOrgId()).getName();
+        MessageTeamplate teamplate2 = MessageTeamplateUtil.insertLeaseByLandlord(account2.getName(), mszRoom1.getAddress(), account1.getName(), orgName);
+        message2.setTitle(teamplate2.getTitle());
+        message2.setCreateTime(new Date());
+        message2.setReceiverId(lease.getLandlordId());
+        message2.setType("1");//租约消息
+        message2.setContentText(teamplate2.getContentText());
+        messageMapper.insert(message2);
+    }
+
+    /**
+     * 判断是否欠租
+     * @param lease
+     * @param receiveTotal
+     * @param mszOrderInfo
+     * @return
+     */
+    public boolean isArrears(MszLease lease, BigDecimal receiveTotal, MszOrderInfo mszOrderInfo) {
+        BigDecimal paidTotal = lease.getPaidRentPrice().add(lease.getPaidDepositPrice());// 实收总费用
+        int oweTotal = receiveTotal.subtract(paidTotal).intValue();
+        if(oweTotal > 0 ){
+            return true;
+        }
+        return false;
+    }
+
+
+}

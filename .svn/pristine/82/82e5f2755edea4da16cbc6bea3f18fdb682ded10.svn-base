@@ -1,0 +1,27 @@
+package com.msz.service;
+
+import com.msz.VO.LeaseReturnParamVO;
+import com.msz.VO.ScheduleVO;
+import com.msz.common.PagingRequest;
+import com.msz.model.MszSchedule;
+import com.baomidou.mybatisplus.service.IService;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+/**
+ * <p>
+ * 预付定金表 服务类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08
+ */
+public interface MszScheduleService extends IService<MszSchedule> {
+
+
+    PageInfo<LeaseReturnParamVO> listPage(PagingRequest pagingRequest, String tenantName);
+
+    boolean insertSchedule(MszSchedule mszSchedule);
+
+    boolean updatSchedule(MszSchedule mszSchedule);
+}

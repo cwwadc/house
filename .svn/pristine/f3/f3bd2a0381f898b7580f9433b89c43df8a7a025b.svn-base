@@ -1,0 +1,138 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.msz.Scheduler.LeaseScheduler;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszFloor;
+import com.msz.model.MszRoom;
+import com.msz.model.MszRoomTemple;
+import com.msz.model.SysUser;
+import com.msz.service.MszFloorService;
+import com.msz.service.MszRoomService;
+import com.msz.service.MszRoomTempleService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+
+
+/**
+ * <p>
+ * 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-09-18 ${time}
+ */
+@Api(value = "/msz-floors", description = "楼层接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-floors")
+public class MszFloorController {
+    private static Logger logger = LoggerFactory.getLogger(MszFloorController.class);
+    /**
+     * id  Integer
+     * <p>
+     * 楼层名称  name  String
+     * <p>
+     * 楼栋id  houseId  Integer
+     */
+    @Autowired
+    private MszFloorService mszFloorService;
+    @Autowired
+    private MszRoomTempleService mszRoomTempleService;
+    @Autowired
+    private MszRoomService mszRoomService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszFloor", notes = "根据id获取单个MszFloor")
+    public RespEntity<MszFloor> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszFloorService.selectById(id));
+    }
+
+    @GetMapping("byHouse/{houseId}")
+    @ApiOperation(value = "根据楼栋id获取所有层-------PC@Author=Maoyy", notes = "根据楼栋id获取所有层-------PC@Author=Maoyy")
+    public RespEntity<MszFloor> byHouse(@PathVariable Integer houseId) {
+        return RespEntity.ok().setResponseContent(mszFloorService.selectList(new EntityWrapper<MszFloor>().eq("houseId", houseId).orderBy("name",true)));
+    }
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszFloor", notes = "分页查询MszFloor")
+    @GetMapping
+    public RespEntity<PageInfo<MszFloor>> list(PagingRequest pagingRequest) {
+        return RespEntity.ok().setResponseContent(mszFloorService.listPage(pagingRequest, null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszFloor", notes = "保存MszFloor")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszFloor mszFloor) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        try {
+            int houseNumber = mszFloorService.selectCount(new EntityWrapper<MszFloor>().eq("houseId", mszFloor.getHouseId()));
+            mszFloor.setName(houseNumber + 1);
+            MszRoomTemple temple = new MszRoomTemple();
+            //修改模板上的总楼层
+            temple.setWhichFloor(String.valueOf(houseNumber + 1));
+            mszRoomTempleService.update(temple,new EntityWrapper<MszRoomTemple>().eq("houseId",mszFloor.getHouseId()));
+            //修改每个房源上的总楼层
+            MszRoom room = new MszRoom();
+            room.setWhichFloor(String.valueOf(houseNumber + 1));
+            mszRoomService.update(room,new EntityWrapper<MszRoom>().eq("houseId",mszFloor.getHouseId()));
+            mszFloorService.insertHouseGetId(mszFloor);
+        } catch (Exception e) {
+            logger.error(e.getLocalizedMessage());
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->新增->成功");
+        return RespEntity.ok("保存成功").setResponseContent(mszFloor);
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszFloor", notes = "根据ID修改MszFloor")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszFloor mszFloor) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszFloorService.updateById(mszFloor)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->更新->失败");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszFloor", notes = "根据ID删除MszFloor")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszFloorService.deleteById(id)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼层->删除->失败");
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

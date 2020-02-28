@@ -1,0 +1,101 @@
+package com.msz.controller;
+
+import com.msz.model.MszArrears;
+import com.msz.service.MszArrearsService;
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+
+/**
+ * <p>
+ * 欠租 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-10 ${time}
+ */
+@Api(value = "/msz-arrearss", description = "欠租 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-arrearss")
+public class MszArrearsController {
+
+    /**
+    
+     *    主键ID  id  Integer 
+    
+     *    交费ID  orderId  Integer 
+    
+     *    欠收金额  arrearsAmount  BigDecimal 
+    
+     *    开始时间  startTime  Date 
+    
+     *    结束时间  endTime  Date 
+    
+     *    0 不用消息提醒 1 消息提醒  available  String 
+    
+     *    创建时间  createTime  Date 
+    
+     *    是否删除  isDel  String 
+         */
+    @Autowired
+    private MszArrearsService mszArrearsService;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszArrears-------PC@Author=Maoyy", notes = "根据id获取单个MszArrears-------PC@Author=Maoyy")
+    public RespEntity< MszArrears > get(@PathVariable Integer id){
+        return RespEntity.ok().setResponseContent(mszArrearsService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszArrears-------PC@Author=Maoyy", notes = "分页查询MszArrears-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszArrears>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(mszArrearsService.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszArrears-------PC@Author=Maoyy", notes = "保存MszArrears-------PC@Author=Maoyy")
+    public RespEntity insert(@RequestBody MszArrears mszArrears ){
+        if ( ! mszArrearsService.insert( mszArrears) ){
+        return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszArrears-------PC@Author=Maoyy", notes = "根据ID修改MszArrears-------PC@Author=Maoyy")
+    public RespEntity update(@RequestBody MszArrears mszArrears ){
+        if ( ! mszArrearsService.updateById( mszArrears ) ){
+        return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszArrears-------PC@Author=Maoyy", notes = "根据ID删除MszArrears-------PC@Author=Maoyy")
+    public RespEntity delete(@PathVariable Integer id){
+        if ( ! mszArrearsService.deleteById(id) ){
+        return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+
+}

@@ -1,0 +1,16 @@
+package com.msz.VO;
+
+import com.msz.model.MszOrderCharge;
+import com.msz.model.MszOrderInfo;
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class PaymentVO {
+
+    private MszOrderInfo mszOrderInfo;//交费信息
+    /*private MszArrears arrears;//欠租信息*/
+    private List<MszOrderCharge> orderChargeList;//收费项list
+
+}

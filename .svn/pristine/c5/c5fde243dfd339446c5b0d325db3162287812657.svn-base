@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszArrearsMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszArrears">
+		<id column="id" property="id" />
+		<result column="order_id" property="orderId" />
+		<result column="arrears_amount" property="arrearsAmount" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="available" property="available" />
+		<result column="create_time" property="createTime" />
+		<result column="is_del" property="isDel" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, order_id AS orderId, arrears_amount AS arrearsAmount, start_time AS startTime, end_time AS endTime, available, create_time AS createTime, is_del AS isDel
+    </sql>
+
+</mapper>

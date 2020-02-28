@@ -1,0 +1,132 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszLeaseCharge;
+import com.msz.model.SysUser;
+import com.msz.service.MszLeaseChargeService;
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.service.MszOrderChargeService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 租约收费项目（水电费等） 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08 ${time}
+ */
+@Api(value = "/msz-lease-charges", description = "租约收费项目（水电费等） 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-lease-charges")
+public class MszLeaseChargeController {
+
+    /**
+    
+     *    主键ID  id  Integer 
+    
+     *    收费项目  chargeName  String 
+    
+     *    收费金额  chargePrice  BigDecimal 
+    
+     *    0 不应用到每期收费  1 应用到每期收费  available  String 
+    
+     *    创建时间  createTime  Date 
+    
+     *    是否删除  isDel  String 
+    
+     *    租约ID  leaseId  Integer 
+         */
+    @Autowired
+    private MszLeaseChargeService mszLeaseChargeService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+    @Autowired
+    private MszOrderChargeService mszOrderChargeService;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszLeaseCharge-------PC@Author=Maoyy", notes = "根据id获取单个MszLeaseCharge-------PC@Author=Maoyy")
+    public RespEntity< MszLeaseCharge > get(@PathVariable Integer id){
+        return RespEntity.ok().setResponseContent(mszLeaseChargeService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszLeaseCharge-------PC@Author=Maoyy", notes = "分页查询MszLeaseCharge-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszLeaseCharge>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(mszLeaseChargeService.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszLeaseCharge-------PC@Author=Maoyy", notes = "保存MszLeaseCharge-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request,  @RequestBody MszLeaseCharge mszLeaseCharge ){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszLeaseChargeService.insert( mszLeaseCharge) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->新增->成功");
+        return RespEntity.ok("保存成功").setResponseContent(mszLeaseCharge);
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszLeaseCharge-------PC@Author=Maoyy", notes = "根据ID修改MszLeaseCharge-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszLeaseCharge mszLeaseCharge ){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszLeaseChargeService.updateById( mszLeaseCharge ) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->更新->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszLeaseCharge-------PC@Author=Maoyy", notes = "根据ID删除MszLeaseCharge-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszLeaseChargeService.deleteById(id) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"租约收费项目->删除->失败");
+        return RespEntity.ok("删除成功");
+    }
+
+
+    @GetMapping("/getListByLeaseId")
+    @ApiOperation(value = "根据租约查收费项", notes = "根据租约查收费项")
+    public RespEntity<MszLeaseCharge> getListByLeaseId(Integer leaseId){
+        List<MszLeaseCharge> mszLeaseChargeList = mszLeaseChargeService.selectList(new EntityWrapper<MszLeaseCharge>().eq("leaseId", leaseId));
+        List<MszLeaseCharge> mszLeaseChargeList2 = mszOrderChargeService.getMoneyByLease(leaseId);
+        mszLeaseChargeList.addAll(mszLeaseChargeList2);
+        return RespEntity.ok().setResponseContent(mszLeaseChargeList);
+    }
+
+}

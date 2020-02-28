@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderInfoMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszOrderInfo">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="leaseId" property="leaseId"/>
+        <result column="roomId" property="roomId"/>
+        <result column="landlordId" property="landlordId"/>
+        <result column="tenantId" property="tenantId"/>
+        <result column="rentPrice" property="rentPrice"/>
+        <result column="depositPrice" property="depositPrice"/>
+        <result column="breachPrice" property="breachPrice"/>
+        <result column="endTime" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+    </resultMap>
+
+    <!-- 订单表连接交费项 -->
+    <resultMap id="OrderLeftCharge" type="com.msz.VO.MszOrderInfoVo">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="leaseId" property="leaseId"/>
+        <result column="roomId" property="roomId"/>
+        <result column="landlordId" property="landlordId"/>
+        <result column="tenantId" property="tenantId"/>
+        <result column="billDay" property="billDay"/>
+        <result column="collectMoneyDay" property="collectMoneyDay"/>
+        <result column="schedulePrice" property="schedulePrice"/>
+        <result column="paidSchedulePrice" property="paidSchedulePrice"/>
+        <result column="rentPrice" property="rentPrice"/>
+        <result column="paidRentPrice" property="paidRentPrice"/>
+        <result column="depositPrice" property="depositPrice"/>
+        <result column="paidDepositPrice" property="paidDepositPrice"/>
+        <result column="receiveTotal" property="receiveTotal"/>
+        <result column="paidTotal" property="paidTotal"/>
+        <result column="oweTotal" property="oweTotal"/>
+        <result column="available" property="available"/>
+        <result column="arrearsFlag" property="arrearsFlag"/>
+        <result column="flag" property="flag"/>
+        <result column="breachPrice" property="breachPrice"/>
+        <result column="endTime" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="isDel" property="isDel"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+        <result column="operatorId" property="operatorId"/>
+        <result column="createId" property="createId"/>
+        <result column="scheduleDesc" property="scheduleDesc"/>
+        <result column="tenantName" property="tenantName"/>
+        <result column="operatorName" property="operatorName"/>
+        <collection property="chargeList" ofType="com.msz.model.MszOrderCharge">
+            <id column="chargeId" property="id"/>
+            <result column="mocorderId" property="orderId"/>
+            <result column="mocchargeName" property="chargeName"/>
+            <result column="mocreceiveAmount" property="receiveAmount"/>
+            <result column="mocchargeMonth" property="chargeMonth"/>
+            <result column="moccharge_start_time" property="charge_start_time"/>
+            <result column="moccharge_end_time" property="charge_end_time"/>
+            <result column="mocisDel" property="isDel"/>
+            <result column="moccreateTime" property="createTime"/>
+        </collection>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, leaseId, roomId, landlordId, tenantId, rentPrice, depositPrice, breachPrice, endTime, status, isDel, updateTime, createTime
+    </sql>
+
+    <select id="listAll" resultMap="OrderLeftCharge">
+        SELECT
+        m.id id,
+        m.`no` `no`,
+        m.leaseId leaseId,
+        m.roomId roomId,
+        m.landlordId landlordId,
+        m.tenantId tenantId,
+        m.scheduleId scheduleId,
+        m.billDay billDay,
+        m.collectMoneyDay collectMoneyDay,
+        m.schedulePrice schedulePrice,
+        m.paidSchedulePrice paidSchedulePrice,
+        m.receiveTotal receiveTotal,
+        m.rentPrice rentPrice,
+        m.paidRentPrice paidRentPrice,
+        m.depositPrice depositPrice,
+        m.paidDepositPrice paidDepositPrice,
+        m.paidTotal paidTotal,
+        m.oweTotal oweTotal,
+        m.available available,
+        m.arrearsFlag arrearsFlag,
+        m.flag flag,
+        m.breachPrice breachPrice,
+        m.endTime endTime,
+        m.`status` `status`,
+        m.isDel isDel,
+        m.updateTime updateTime,
+        m.createTime createTime,
+        m.orgId orgId,
+        m.operatorId operatorId,
+        m.createId createId,
+        m.scheduleDesc scheduleDesc,
+        a.`NAME` tenantName,
+        su.trueName operatorName,
+        moc.id chargeId,
+        moc.order_id mocorderId,
+        moc.charge_name mocchargeName,
+        moc.receive_amount mocreceiveAmount,
+        moc.charge_start_time moccharge_start_time,
+        moc.charge_end_time moccharge_end_time,
+        moc.is_del mocisDel,
+        moc.create_time moccreateTime,
+        moc.available mocavailable
+        FROM msz_order_info m
+        LEFT JOIN msz_account a ON m.tenantId=a.id
+        LEFT JOIN sys_user su ON m.operatorId=su.id
+        LEFT JOIN msz_lease l ON m.leaseId = l.id
+        LEFT JOIN msz_order_charge moc ON m.id = moc.order_id
+        WHERE m.isDel = 0
+        <if test="status != null and status != ''">
+            and m.status = #{status}
+        </if>
+        <if test="endTimeBegin != null and endTimeBegin != '' and endTimeEnd != null and endTimeEnd != ''">
+            and m.endTime between #{endTimeBegin} and #{endTimeEnd}
+        </if>
+        <if test="tenantName != null and tenantName != ''">
+            and a.name like "%"#{tenantName}"%"
+        </if>
+        <if test="orgId != null and orgId != ''">
+            and m.orgId = #{orgId}
+        </if>
+        <if test="billDay != null and billDay != ''">
+            and l.billDay = #{billDay}
+        </if>
+        ORDER BY m.createTime DESC
+    </select>
+
+
+    <select id="getOrderInfo" resultType="com.msz.model.MszOrderInfo">
+        SELECT
+            t1.*
+        FROM
+            msz_order_info t1
+        WHERE
+            t1.id = #{orderId}
+        AND t1.`status` = '0'
+        UNION
+            SELECT
+                t2.*
+            FROM
+                msz_order_history t2
+            WHERE
+                t2.id = #{orderId}
+            AND t2.`status` = '1'
+    </select>
+
+    <select id="getOrderInfoList" resultType="com.msz.model.MszOrderInfo">
+        SELECT
+            t1.*
+        FROM
+            msz_order_info t1
+        WHERE
+            t1.leaseId = #{leaseId}
+        AND t1.`status` = '0'
+--         AND (ISNULL(t1.billDay) OR t1.billDay >= day(now()))
+    </select>
+
+</mapper>

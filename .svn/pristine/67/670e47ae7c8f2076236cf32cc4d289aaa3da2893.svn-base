@@ -1,0 +1,176 @@
+package com.msz.model;
+
+import com.baomidou.mybatisplus.enums.IdType;
+import java.math.BigDecimal;
+import java.util.Date;
+import com.baomidou.mybatisplus.annotations.TableId;
+import com.baomidou.mybatisplus.activerecord.Model;
+import com.baomidou.mybatisplus.annotations.TableName;
+import java.io.Serializable;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+
+/**
+ * <p>
+ * 租约
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-09
+ */
+@Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@ApiModel(value = "MszLease对象", description = "租约")
+@TableName("msz_lease")
+public class MszLease extends Model<MszLease> {
+
+    private static final long serialVersionUID = 1L;
+
+
+	@TableId(value="id", type= IdType.AUTO)
+	@ApiModelProperty(value = "", name = "id")
+	private Integer id;
+    /**
+     * 租约编号
+     */
+	@ApiModelProperty(value = "租约编号", name = "no")
+	private String no;
+    /**
+     * 房间ID
+     */
+	@ApiModelProperty(value = "房间ID", name = "roomId")
+	private Integer roomId;
+    /**
+     * 房东ID
+     */
+	@ApiModelProperty(value = "房东ID", name = "landlordId")
+	private Integer landlordId;
+    /**
+     * 房客ID
+     */
+	@ApiModelProperty(value = "房客ID", name = "tenantId")
+	private Integer tenantId;
+    /**
+     * 业务员
+     */
+	@ApiModelProperty(value = "业务员", name = "userId")
+	private Integer userId;
+    /**
+     * 违约金 (暂时取消,但保留字段)
+     */
+	@ApiModelProperty(value = "违约金 (暂时取消,但保留字段)", name = "liquidatedDamages")
+	private BigDecimal liquidatedDamages;
+    /**
+     * 账单日
+     */
+	@ApiModelProperty(value = "账单日", name = "billDay")
+	private String billDay;
+    /**
+     * 租金交费日
+     */
+	@ApiModelProperty(value = "租金交费日", name = "collectMoneyDay")
+	private String collectMoneyDay;
+    /**
+     * 开始时间
+     */
+	@ApiModelProperty(value = "开始时间", name = "startTime")
+	private Date startTime;
+    /**
+     * 中止时间
+     */
+	@ApiModelProperty(value = "中止时间", name = "stopTime")
+	private Date stopTime;
+    /**
+     * 结束时间
+     */
+	@ApiModelProperty(value = "结束时间", name = "endTime")
+	private Date endTime;
+    /**
+     * 付款方式(0: 月付  1 季付 2: 半年付 3: 一年付  )
+     */
+	@ApiModelProperty(value = "付款方式(0: 月付  1 季付 2: 半年付 3: 一年付  )", name = "payWay")
+	private Integer payWay;
+    /**
+     * 租金
+     */
+	@ApiModelProperty(value = "租金", name = "rentPrice")
+	private BigDecimal rentPrice;
+    /**
+     * 实收租金
+     */
+	@ApiModelProperty(value = "实收租金", name = "paidRentPrice")
+	private BigDecimal paidRentPrice;
+    /**
+     * 押金
+     */
+	@ApiModelProperty(value = "押金", name = "depositPrice")
+	private BigDecimal depositPrice;
+    /**
+     * 实收押金
+     */
+	@ApiModelProperty(value = "实收押金", name = "paidDepositPrice")
+	private BigDecimal paidDepositPrice;
+    /**
+     * 0 不应用到每期交费  1 应用到每期交费
+     */
+	@ApiModelProperty(value = "0 不应用到每期交费  1 应用到每期交费", name = "available")
+	private String available;
+    /**
+     * 0 不修改金额提醒  1 修改金额提醒
+     */
+	@ApiModelProperty(value = "0 不修改金额提醒  1 修改金额提醒", name = "flag")
+	private String flag;
+    /**
+     * 应付款
+     */
+	@ApiModelProperty(value = "应付款", name = "duePrice")
+	private BigDecimal duePrice;
+    /**
+     * 合同照片
+     */
+	@ApiModelProperty(value = "合同照片", name = "contractPicture")
+	private String contractPicture;
+    /**
+     * 租约状态 0预约中 1执行中 2已结束 3异常
+     */
+	@ApiModelProperty(value = "租约状态 0预约中 1执行中 2已结束 3异常", name = "status")
+	private String status;
+    /**
+     * 创建人
+     */
+	@ApiModelProperty(value = "创建人", name = "operator")
+	private Integer operator;
+    /**
+     * 是否删除
+     */
+	@ApiModelProperty(value = "是否删除", name = "isDel")
+	private String isDel;
+    /**
+     * 更新时间
+     */
+	@ApiModelProperty(value = "更新时间", name = "updateTime")
+	private Date updateTime;
+    /**
+     * 生成时间
+     */
+	@ApiModelProperty(value = "生成时间", name = "createTime")
+	private Date createTime;
+    /**
+     * 所属网点id（房源所在网点id）
+     */
+	@ApiModelProperty(value = "所属网点id（房源所在网点id）", name = "orgId")
+	private Integer orgId;
+
+
+	@Override
+	protected Serializable pkVal() {
+		return this.id;
+	}
+
+}

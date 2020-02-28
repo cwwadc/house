@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszRefundMessageMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszRefundMessage">
+		<id column="id" property="id" />
+		<result column="applyName" property="applyName" />
+		<result column="tenantId" property="tenantId" />
+		<result column="telId" property="telId" />
+		<result column="applyTime" property="applyTime" />
+		<result column="leaseTime" property="leaseTime" />
+		<result column="depositPrice" property="depositPrice" />
+		<result column="remarks" property="remarks" />
+		<result column="status" property="status" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, applyName, tenantId, telId, applyTime, leaseTime, depositPrice, remarks, status
+    </sql>
+
+</mapper>

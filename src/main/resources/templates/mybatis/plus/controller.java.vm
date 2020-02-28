@@ -1,0 +1,105 @@
+package ${package.Controller};
+
+import ${package.Entity}.${entity};
+import ${package.Service}.${table.serviceName};
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+#if(${restControllerStyle})
+#else
+import org.springframework.stereotype.Controller;
+#end
+#if(${superControllerClassPackage})
+import ${superControllerClassPackage};
+#end
+
+/**
+ * <p>
+ * $!{table.comment} 前端控制器
+ * </p>
+ *
+ * @author ${author}
+ * @since ${date} ${time}
+ */
+@Api(value = "/#if(${package.ModuleName})/${package.ModuleName}s#end#if(${controllerMappingHyphenStyle})${controllerMappingHyphen}s#else${table.entityPath}s#end", description = "$!{table.comment} 接口; Responseble:${author}")
+#if(${restControllerStyle})
+@RestController
+#else
+@Controller
+#end
+@RequestMapping("/#if(${package.ModuleName})/${package.ModuleName}s#end#if(${controllerMappingHyphenStyle})${controllerMappingHyphen}s#else${table.entityPath}s#end")
+#if(${superControllerClass})
+public class ${table.controllerName} extends ${superControllerClass} {
+#else
+public class ${table.controllerName} {
+#end
+
+    /**
+    #foreach($field in ${table.fields})
+
+     *   #if("$!field.comment" != "") ${field.comment} #end ${field.propertyName} #if(${field.propertyType.equals("Boolean")}) boolean #else ${field.propertyType} #end
+
+    #end
+     */
+    @Autowired
+    private ${table.serviceName} ${serviceVariableName};
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个${entity}-------PC@Author=Maoyy", notes = "根据id获取单个${entity}-------PC@Author=Maoyy")
+    public RespEntity< ${entity} > get(@PathVariable ${primaryKeyTypeString} id){
+        return RespEntity.ok().setResponseContent(${serviceVariableName}.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询${entity}-------PC@Author=Maoyy", notes = "分页查询${entity}-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<${entity}>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(${serviceVariableName}.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存${entity}-------PC@Author=Maoyy", notes = "保存${entity}-------PC@Author=Maoyy")
+    public RespEntity insert(@RequestBody ${entity} ${entityVariableName} ){
+        if ( ! ${serviceVariableName}.insert( ${entityVariableName}) ){
+        return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改${entity}-------PC@Author=Maoyy", notes = "根据ID修改${entity}-------PC@Author=Maoyy")
+    public RespEntity update(@RequestBody ${entity} ${entityVariableName} ){
+        if ( ! ${serviceVariableName}.updateById( ${entityVariableName} ) ){
+        return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除${entity}-------PC@Author=Maoyy", notes = "根据ID删除${entity}-------PC@Author=Maoyy")
+    public RespEntity delete(@PathVariable ${primaryKeyTypeString} id){
+        if ( ! ${serviceVariableName}.deleteById(id) ){
+        return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+
+}

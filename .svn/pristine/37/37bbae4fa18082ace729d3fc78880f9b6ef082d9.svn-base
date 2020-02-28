@@ -1,0 +1,32 @@
+package com.msz.service.impl;
+
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.dao.MszArrearsMapper;
+import com.msz.model.MszArrears;
+import com.msz.service.MszArrearsService;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import com.msz.common.PagingRequest;
+
+
+/**
+ * <p>
+ * 欠租 服务实现类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-10 ${time}
+ */
+@Service
+public class MszArrearsServiceImpl extends ServiceImpl<MszArrearsMapper, MszArrears> implements MszArrearsService {
+
+    @Override
+    public PageInfo<MszArrears> listPage(PagingRequest pagingRequest,Wrapper wrapper){
+        PageHelper.startPage( pagingRequest.getOffset(), pagingRequest.getLimit() );
+        return new PageInfo<>(super.selectList(wrapper));
+    }
+
+}

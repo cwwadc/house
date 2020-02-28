@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysUserMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.SysUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="sex" property="sex"/>
+        <result column="phone" property="phone"/>
+        <result column="trueName" property="trueName"/>
+        <result column="idCard" property="idCard"/>
+        <result column="address" property="address"/>
+        <result column="orgId" property="orgId"/>
+        <result column="state" property="state"/>
+        <result column="type" property="type"/>
+        <result column="hireDate" property="hireDate"/>
+        <result column="imgIdcard1" property="imgIdcard1"/>
+        <result column="imgIdcard2" property="imgIdcard2"/>
+        <result column="createTime" property="createTime"/>
+        <result column="updateTime" property="updateTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, username, password, sex, phone, trueName, idCard, address, orgId, state, type, hireDate, imgIdcard1, imgIdcard2, createTime, updateTime
+    </sql>
+
+    <select id="getPermissionByUserId" resultType="com.msz.model.SysAuthorities">
+		select a.*,m.menuName from sys_user u
+		left join sys_user_role ur on ur.userId=u.id
+		left join sys_role r on r.id=ur.roleId
+		left join sys_role_authorities ra on ra.roleId=r.id
+		left join sys_authorities a on ra.authorityId=a.id
+		left join sys_menu m on m.id=a.menuId
+		where u.id=#{userId}
+	</select>
+
+    <select id="getMenuListByRoleId" resultType="com.msz.model.SysMenu">
+		SELECT m.* FROM sys_role r
+		LEFT JOIN sys_role_menu rm ON rm.roleId = r.id
+		LEFT JOIN sys_menu m ON m.id=rm.menuId
+		WHERE r.id= #{roleId}
+		GROUP BY m.id
+	</select>
+
+    <select id="getMenuListByUserId" resultType="com.msz.model.SysMenu">
+		SELECT  m.id,m.parentId,m.menuName,m.menuUrl,m.menuIcon,m.sort FROM sys_user u
+		LEFT JOIN sys_user_role ur ON ur.userId = u.id
+		LEFT JOIN sys_role r ON r.id = ur.roleId
+		LEFT JOIN sys_role_menu rm ON rm.roleId = r.id
+		LEFT JOIN sys_menu m ON m.id=rm.menuId
+		LEFT JOIN sys_menu n ON n.parentId=m.id
+		WHERE u.id= #{userId}
+		GROUP BY m.id
+	</select>
+
+    <select id="getRoleByUserId" resultType="com.msz.model.SysRole">
+		select r.* from sys_user u
+		left join sys_user_role ur on ur.userId=u.id
+		left join sys_role r on r.id=ur.roleId
+		where u.id=#{userId}
+	</select>
+
+    <select id="getSalesmanList" resultType="com.msz.model.SysUser">
+        select u.* from sys_user u
+        where
+        0 = 0
+        <if test="name != null and name != ''">
+            and u.trueName like "%" #{name} "%"
+        </if>
+        and u.state = 0
+    </select>
+
+    <select id="login" resultType="com.msz.model.SysUser">
+        SELECT u.* , o.`name` AS "orgName" FROM sys_user u
+        LEFT JOIN sys_org o ON o.id=u.orgId
+        LEFT JOIN sys_user_role ur ON ur.userId=u.id
+        LEFT JOIN sys_role r ON r.id=ur.roleId
+        WHERE u.username=#{username} AND u.`password`=#{password}
+        AND u.state = '0'
+        AND ur.roleId IN (
+        SELECT id FROM sys_role
+        WHERE roleName != '业务员'
+        AND isDel = '0'
+        )
+    </select>
+
+    <select id="getLoginUserById" resultType="com.msz.model.SysUser">
+        SELECT u.* , o.`name` AS "orgName", r.roleName AS "role" FROM sys_user u
+        LEFT JOIN sys_org o ON o.id=u.orgId
+        LEFT JOIN sys_user_role ur ON ur.userId=u.id
+        LEFT JOIN sys_role r ON r.id=ur.roleId
+        WHERE u.id=#{userId}
+        AND u.state = '0'
+        AND ur.roleId IN (
+        SELECT id FROM sys_role
+        WHERE roleName != '业务员'
+        AND isDel = '0'
+        )
+    </select>
+
+    <select id="getAdminList" resultType="com.msz.model.SysUser">
+        SELECT u.*,r.id AS "roleId", r.roleName AS "role",o.`name` AS "orgName" FROM sys_user u
+        LEFT JOIN sys_user_role ur ON ur.userId=u.id
+        LEFT JOIN sys_role r ON r.id=ur.roleId
+        LEFT JOIN sys_org o ON o.id = u.orgId
+        WHERE ur.roleId IN (
+        SELECT id FROM sys_role
+        WHERE roleName != '业务员'
+        )
+    </select>
+
+    <select id="getPrincipalList" resultType="com.msz.model.SysUser">
+        SELECT u.*,r.id AS "roleId", r.roleName AS "role",o.`name` AS "orgName" FROM sys_user u
+        LEFT JOIN sys_user_role ur ON ur.userId=u.id
+        LEFT JOIN sys_role r ON r.id=ur.roleId
+        LEFT JOIN sys_org o ON o.id = u.orgId
+        WHERE ISNULL(u.orgId) AND u.state = 0 AND ur.roleId IN (
+        SELECT id FROM sys_role
+        WHERE roleName = '网点负责人'
+        );
+    </select>
+</mapper>

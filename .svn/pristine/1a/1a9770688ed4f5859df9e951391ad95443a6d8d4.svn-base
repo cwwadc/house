@@ -1,0 +1,241 @@
+package com.msz.controller;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.msz.Scheduler.LeaseScheduler;
+import com.msz.VO.FloorVO;
+import com.msz.VO.TelHouseVO;
+import com.msz.VO.WeHouseDataVO;
+import com.msz.annotation.CurrentUser;
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszFloor;
+import com.msz.model.MszHouse;
+import com.msz.model.MszRoom;
+import com.msz.model.SysUser;
+import com.msz.service.MszFloorService;
+import com.msz.service.MszHouseService;
+import com.msz.service.MszRoomService;
+import com.msz.service.MszRoomTempleService;
+import com.msz.util.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.Date;
+
+
+/**
+ * <p>
+ * 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-09-17 ${time}
+ */
+@Api(value = "/msz-houses", description = "楼栋接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-houses")
+public class MszHouseController {
+    private static Logger logger = LoggerFactory.getLogger(MszHouseController.class);
+
+    /**
+     * id  Integer
+     * <p>
+     * 楼栋名称  houseName  String
+     * <p>
+     * 地址  address  String
+     */
+    @Autowired
+    private MszHouseService mszHouseService;
+
+    @Autowired
+    private MszFloorService mszFloorService;
+
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszHouse-------?@Author=Maoyy", notes = "根据id获取单个MszHouse-------?@Author=Maoyy")
+    public RespEntity<MszHouse> get(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszHouseService.selectById(id));
+    }
+
+    @GetMapping("byTelId/{id}")
+    @ApiOperation(value = "房东id找到所属楼栋-------小程序@Author=Maoyy", notes = "房东id找到所属楼栋-------小程序@Author=Maoyy")
+    public RespEntity<TelHouseVO> byTelId(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszHouseService.telHouse(id));
+    }
+
+    @GetMapping("getHouseData/{id}")
+    @ApiOperation(value = "小程序首页查看楼房数据-------小程序@Author=Maoyy", notes = "小程序首页查看楼房数据-------小程序@Author=Maoyy")
+    public RespEntity<WeHouseDataVO> getHouseData(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszHouseService.getHouseData(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszHouse-------?@Author=Maoyy", notes = "分页查询MszHouse-------?@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszHouse>> list(PagingRequest pagingRequest) {
+        return RespEntity.ok().setResponseContent(mszHouseService.listPage(pagingRequest, null));
+    }
+
+    @ApiOperation(value = "分页查询这栋房子底下有哪些房源-------PC@Author=Maoyy", notes = "分页查询这栋房子底下有哪些房源-------PC@Author=Maoyy")
+    @GetMapping("byRoom")
+    @LoginRequired
+    public RespEntity<PageInfo<MszHouse>> byRoom(@CurrentUser SysUser user, MszHouse house) {
+        EntityWrapper<MszHouse> warpper = new EntityWrapper<>();
+        if (StringUtil.IsNotEmpty(house.getAddress())) {
+            warpper.like("address", house.getAddress());
+        }
+        String role = user.getRole();
+        if(!role.equals("管理员")){
+            warpper.eq("orgId",house.getOrgId());
+        }
+        return RespEntity.ok().setResponseContent(mszHouseService.byRoom(user, warpper));
+    }
+
+    @ApiOperation(value = "查询某栋房子下的楼层和房源-------小程序@Author=Maoyy", notes = "查询某栋房子下的楼层和房源-------小程序@Author=Maoyy")
+    @GetMapping("byHouse/{id}")
+    public RespEntity<PageInfo<MszHouse>> byHouse(@PathVariable Integer id) {
+        return RespEntity.ok().setResponseContent(mszFloorService.FloorByRoom(id));
+    }
+
+    @PostMapping
+    @ApiOperation(value = "保存MszHouse-------?@Author=Maoyy", notes = "保存MszHouse-------?@Author=Maoyy")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszHouse mszHouse) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        try {
+            mszHouseService.insertHouseGetId(mszHouse);
+        } catch (Exception e) {
+            logger.error(e.getLocalizedMessage());
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->失败");
+        return RespEntity.ok("保存成功").setResponseContent(mszHouse.getId());
+    }
+
+    @Autowired
+    private MszRoomTempleService mszRoomTempleService;
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "mszRoom", value = "什么样的房间参数", required = true),
+            @ApiImplicitParam(name = "houseNumber", value = "总层数", required = true),
+            @ApiImplicitParam(name = "roomNumber", value = "每层多少间", required = true)
+    })
+    @PostMapping("insertList")
+    @ApiOperation(value = "批量新增（楼栋，楼层，房源）-------PC@Author=Maoyy", notes = "批量新增（楼栋，楼层，房源）-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity insertList(HttpServletRequest request, @RequestBody MszRoom mszRoom) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        MszHouse house = new MszHouse();
+        try {
+            house.setAddress(mszRoom.getAddress() + mszRoom.getTownNumber());
+            house.setHouseName(mszRoom.getHouseName());
+            house.setOrgId(mszRoom.getOrgId());
+            house.setTelId(mszRoom.getTelId());
+            //插入楼栋的数据，然后返回id
+            if (mszHouseService.insertHouseGetId(house) == 0) {
+                sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->失败");
+                return RespEntity.badRequest("保存楼栋失败");
+            }
+            //将数据加入到msz_room_temple表中去
+            if (!mszRoomTempleService.insertTemple(mszRoom, house.getId())) {
+                sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增模板->失败");
+                return RespEntity.badRequest("保存模板失败");
+            }
+            mszRoom.setHouseId(house.getId());
+            mszRoom.setCreateTime(new Date());
+            mszRoom.setStatus("2");
+            //保持描述不为空
+            if (mszRoom.getDescription() == null) {
+                mszRoom.setDescription("");
+            }
+            if (!mszHouseService.insertRoom(mszRoom, house, Integer.parseInt(mszRoom.getFloor()), Integer.parseInt(mszRoom.getWhichFloor()))) {
+                sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->失败");
+                return RespEntity.badRequest("保存失败");
+            }
+        } catch (Exception e) {
+            logger.error(e.getLocalizedMessage());
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->失败");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->新增->成功");
+        return RespEntity.ok("保存成功").setResponseContent(house);
+    }
+
+    @Autowired
+    private MszRoomService mszRoomService;
+
+    @PutMapping("online/{houseId}")
+    @ApiOperation(value = "该楼栋所有房间上架-------PC@Author=Maoyy", notes = "该楼栋所有房间上架-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity insertList(HttpServletRequest request, @PathVariable Integer houseId) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        MszRoom room = new MszRoom();
+        room.setStatus("0");
+        if (!mszRoomService.update(room, new EntityWrapper<MszRoom>().eq("houseId", houseId))) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->房间上架->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->房间上架->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszHouse-------PC@Author=Maoyy", notes = "根据ID修改MszHouse-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszHouse mszHouse) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (!mszHouseService.updateById(mszHouse)) {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->修改->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->修改->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszHouse-------PC@Author=Maoyy", notes = "根据ID删除MszHouse-------PC@Author=Maoyy")
+    @Transactional
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id) {
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if (mszHouseService.deleteById(id)) {
+            if (mszFloorService.delete(new EntityWrapper<MszFloor>().eq("houseId", id))) {
+                if (!mszRoomService.delete(new EntityWrapper<MszRoom>().eq("houseId", id))) {
+                    sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->删除->失败");
+                    return RespEntity.badRequest("删除失败");
+                }
+            } else {
+                sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->删除->失败");
+                return RespEntity.badRequest("删除失败");
+            }
+        } else {
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"楼栋->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+
+}

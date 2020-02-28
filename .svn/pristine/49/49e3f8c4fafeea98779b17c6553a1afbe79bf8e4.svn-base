@@ -1,0 +1,379 @@
+package com.msz.service.impl;
+
+import com.aliyuncs.exceptions.ClientException;
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.VO.*;
+import com.msz.common.LeaseCommon;
+import com.msz.common.PagingRequest;
+import com.msz.common.UserCommon;
+import com.msz.dao.*;
+import com.msz.model.*;
+import com.msz.service.*;
+import com.msz.util.*;
+import net.bytebuddy.implementation.auxiliary.AuxiliaryType;
+import org.apache.velocity.runtime.directive.Foreach;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.rmi.dgc.Lease;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+
+/**
+ * <p>
+ * 租约 服务实现类
+ * </p>
+ *
+ * @author cww
+ * @since 2019-06-03 ${time}
+ */
+@Service
+public class MszLeaseServiceImpl extends ServiceImpl<MszLeaseMapper, MszLease> implements MszLeaseService {
+
+
+    MszLeaseMapper mszLeaseMapper;
+    SysCityMapper sysCityMapper;
+    MszRoomMapper mszRoomMapper;
+    MszOrderInfoMapper mszOrderInfoMapper;
+    MszMessageMapper messageMapper;
+    MszRefundInfoMapper refundInfoMapper;
+    MszAccountMapper accountMapper;
+    SysOrgMapper orgMapper;
+
+    @Autowired
+    public MszLeaseServiceImpl(MszLeaseMapper mszLeaseMapper, SysCityMapper sysCityMapper, MszRoomMapper mszRoomMapper,
+                               MszOrderInfoMapper mszOrderInfoMapper, MszMessageMapper messageMapper, MszRefundInfoMapper refundInfoMapper, MszAccountMapper accountMapper, SysOrgMapper orgMapper) {
+        this.mszLeaseMapper = mszLeaseMapper;
+        this.sysCityMapper = sysCityMapper;
+        this.mszRoomMapper = mszRoomMapper;
+        this.mszOrderInfoMapper = mszOrderInfoMapper;
+        this.messageMapper = messageMapper;
+        this.refundInfoMapper = refundInfoMapper;
+        this.accountMapper = accountMapper;
+        this.orgMapper = orgMapper;
+    }
+
+    /**
+     * @Author Maoyy
+     * @Description 代码写了一行又一行
+     * @Date 19:10 2019/6/13
+     **/
+    @Autowired
+    private MszAccountService mszAccountService;
+    @Autowired
+    private MszRoomService mszRoomService;
+    @Autowired
+    private MszOrderInfoService mszOrderInfoService;
+    @Autowired
+    private SysUserService sysUserService;
+    @Autowired
+    MszLeaseChargeService leaseChargeService;
+    @Autowired
+    MszScheduleMapper scheduleMapper;
+    @Autowired
+    LeaseCommon leaseCommon;
+    @Autowired
+    private MszLeaseChargeMapper mszLeaseChargeMapper;
+    @Autowired
+    private MszOrderChargeMapper mszOrderChargeMapper;
+    @Autowired
+    MszOrderInfoMapper orderInfoMapper;
+    @Autowired
+    MszWalletService walletService;
+    @Autowired
+    MszWalletBillMapper billMapper;
+
+    /**
+     * 租约列表
+     *
+     * @param status
+     * @return
+     */
+    @Override
+    public PageInfo<LeaseReturnParamVO> listPage(PagingRequest pagingRequest, String status, String tenantName, SysUser user) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        List<LeaseReturnParamVO> leaseList;
+        String role = user.getRole();
+        LeaseReturnParamVO returnParamVO = new LeaseReturnParamVO();
+        if (status.equals("3")) {
+            // 即期
+            returnParamVO.setSpotFlag("1");
+        }
+        if (role.equals("管理员")) {
+            returnParamVO.setStatus(status);
+            returnParamVO.setTenantName(tenantName);
+            leaseList = mszLeaseMapper.getLeaseList(returnParamVO);
+            if (leaseList != null && leaseList.size() > 0) {
+                leaseList.forEach(item -> {
+                    item.setMszLeaseCharge(mszLeaseChargeMapper.selectList(new EntityWrapper<MszLeaseCharge>().eq("leaseId", item.getId())));
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        } else {
+            returnParamVO.setStatus(status);
+            returnParamVO.setOrgId(user.getOrgId());
+            returnParamVO.setTenantName(tenantName);
+            leaseList = mszLeaseMapper.getLeaseList(returnParamVO);
+            if (leaseList != null && leaseList.size() > 0) {
+                leaseList.forEach(item -> {
+                    item.setMszLeaseCharge(mszLeaseChargeMapper.selectList(new EntityWrapper<MszLeaseCharge>().eq("leaseId", item.getId())));
+                    item.setProvince(item.getProvinceId() == null ? "" : sysCityMapper.selectById(item.getProvinceId().toString()).getName());
+                    item.setCity(item.getCityId() == null ? "" : sysCityMapper.selectById(item.getCityId().toString()).getName());
+                    item.setCounty(item.getCountyId() == null ? "" : sysCityMapper.selectById(item.getCountyId().toString()).getName());
+                    item.setTown(item.getTownId() == null ? "" : sysCityMapper.selectById(item.getTownId().toString()).getName());
+                });
+            }
+        }
+        return new PageInfo<>(leaseList);
+    }
+
+    /**
+     * 新增租约
+     *
+     * @param lease
+     * @return
+     */
+    @Override
+    @Transactional
+    public boolean insertMszLease(MszLease lease, List<MszLeaseCharge> leaseChargeList) {
+        // 0.更新预定信息
+        BigDecimal paidAmount = new BigDecimal("0.00");
+        BigDecimal rentPrice = lease.getRentPrice(); // 租金
+        if (lease.getScheduleId() != null) {
+            MszSchedule schedule = scheduleMapper.selectById(lease.getScheduleId());
+            schedule.setIsDel("1");
+            paidAmount = schedule.getPaidAmount();
+            scheduleMapper.updateById(schedule);
+            rentPrice = rentPrice.subtract(paidAmount);
+            // 房东收到定金到钱包余额
+            MszWallet mszWallet = walletService.selectOne(new EntityWrapper<MszWallet>().eq("accountId", lease.getLandlordId()));
+            mszWallet.setBalance(mszWallet.getBalance().add(paidAmount));
+            walletService.updateById(mszWallet);
+            // 交易记录
+            MszWalletBill bill = new MszWalletBill();
+            bill.setAccountId(lease.getLandlordId());
+            bill.setAmt(paidAmount);
+            bill.setNo(UUIDUtils.getOrderIdByTime());
+            bill.setType("5");
+            bill.setCreateTime(new Date());
+            billMapper.insert(bill);
+        }
+        BigDecimal receiveTotal = rentPrice.add(lease.getPaidDepositPrice());// 应收总费用
+        BigDecimal chargeTotal = new BigDecimal("0.00");
+        if (leaseChargeList != null && leaseChargeList.size() > 0) {
+            for (int i = 0; i < leaseChargeList.size(); i++) {
+                MszLeaseCharge mszLeaseCharge = leaseChargeList.get(i);
+                chargeTotal = chargeTotal.add(mszLeaseCharge.getChargePrice());
+            }
+            receiveTotal = receiveTotal.add(chargeTotal);
+        }
+        //0.新增租约信息
+        String leaseNo = UUIDUtils.getOrderIdByTime();
+        lease.setNo(leaseNo);
+        lease.setReceiveTotal(receiveTotal);
+        lease.setStatus("1");
+        mszLeaseMapper.insert(lease);
+        //1.把房屋状态改为已租
+        MszRoom mszRoom = mszRoomMapper.selectById(lease.getRoomId());
+        mszRoom.setStatus("1");
+        mszRoomMapper.updateById(mszRoom);
+        //2.添加其它收费项  计算总的应收费用
+        if (leaseChargeList != null && leaseChargeList.size() > 0) {
+            for (int i = 0; i < leaseChargeList.size(); i++) {
+                MszLeaseCharge mszLeaseCharge = leaseChargeList.get(i);
+                mszLeaseCharge.setLeaseId(lease.getId());
+                mszLeaseCharge.setCreateTime(new Date());
+            }
+            leaseChargeService.insertBatch(leaseChargeList);
+        }
+
+        //发送消息
+        leaseCommon.insertOrderInfo(lease, receiveTotal, rentPrice,paidAmount, leaseChargeList);
+        leaseCommon.sendMessage(lease, leaseNo, receiveTotal, leaseChargeList);
+        return true;
+
+    }
+
+
+    @Override
+    @Transactional
+    public boolean updateMszLease(MszLease lease) {
+
+        List<MszLeaseCharge> leaseChargeList = lease.getLeaseChargeList(); // 交费项列表
+        BigDecimal paidAmount = new BigDecimal("0.00");
+        BigDecimal rentPrice = lease.getRentPrice(); // 租金
+        if (lease.getScheduleId() != null) {
+            MszSchedule schedule = scheduleMapper.selectById(lease.getScheduleId());
+            paidAmount = schedule.getPaidAmount(); // 定金
+            rentPrice = rentPrice.subtract(paidAmount);
+        }
+        BigDecimal receiveTotal = rentPrice.add(lease.getPaidDepositPrice());// 应收总费用
+        BigDecimal chargeTotal = new BigDecimal("0.00"); // 其他收费项费用
+        // 计算其他收费项总费用
+        if (leaseChargeList != null && leaseChargeList.size() > 0) {
+            for (int i = 0; i < leaseChargeList.size(); i++) {
+                MszLeaseCharge mszLeaseCharge = leaseChargeList.get(i);
+                chargeTotal = chargeTotal.add(mszLeaseCharge.getChargePrice());
+            }
+            receiveTotal = receiveTotal.add(chargeTotal);
+        }
+        //1.修改租约信息
+        lease.setReceiveTotal(receiveTotal);
+        mszLeaseMapper.updateById(lease);
+        //2.修改其它收费项
+        if (leaseChargeList != null && leaseChargeList.size() > 0) {
+            leaseChargeService.updateBatchById(leaseChargeList);
+        }
+        return true;
+    }
+
+    /**
+     * 查看租约
+     *
+     * @param id
+     * @return
+     */
+    @Override
+    public LeaseReturnParamVO getMszLeaseById(Integer id) {
+        LeaseReturnParamVO leaseDesc = mszLeaseMapper.getLeaseDesc(id);
+        leaseDesc.setProvince(leaseDesc.getProvinceId() == null ? "" : sysCityMapper.selectById(leaseDesc.getProvinceId().toString()).getName()); //省份名称
+        leaseDesc.setCity(leaseDesc.getCityId() == null ? "" : sysCityMapper.selectById(leaseDesc.getCityId().toString()).getName()); //城市名称
+        leaseDesc.setCounty(leaseDesc.getCountyId() == null ? "" : sysCityMapper.selectById(leaseDesc.getCountyId().toString()).getName()); //区县名称
+        leaseDesc.setTown(leaseDesc.getTownId() == null ? "" : sysCityMapper.selectById(leaseDesc.getTownId().toString()).getName()); //街道名称
+        return leaseDesc;
+    }
+
+
+    @Override
+    public TenantIdAndUserIdVO tenantIdAndUserId(Integer tenantId, Integer userId) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        vo.setMszLease(selectOne(new EntityWrapper<MszLease>().eq("tenantId", tenantId).eq("userId", userId)));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Autowired
+    private MszOrderHistoryService mszOrderHistoryService;
+
+    @Override
+    public TenantIdAndUserIdVO byTenantId(Integer id) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        MszLease lease = selectOne(new EntityWrapper<MszLease>().eq("tenantId", id).andNew().eq("status", "1").or().eq("status", "0"));
+        vo.setMszLease(lease);
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        List<MszLeaseCharge> mszLeaseChargeList = null;
+        //其它收费项
+        if (lease != null) {
+            mszLeaseChargeList = mszLeaseChargeMapper.selectList(new EntityWrapper<MszLeaseCharge>().eq("leaseId", vo.getMszLease().getId()).eq("isDel", '0'));
+            if (mszLeaseChargeList != null) {
+                vo.getMszLease().setLeaseChargeList(mszLeaseChargeList);
+            }
+        }
+        vo.setMszOrderHistory(mszOrderHistoryService.selectOne(new EntityWrapper<MszOrderHistory>().eq("leaseId", vo.getMszLease().getId()).eq("arrearsFlag","1")));
+        if (vo.getMszLease().getOperator() != null) {
+            vo.setOperator(sysUserService.selectById(vo.getMszLease().getOperator()).getTrueName());
+        }
+        // TODO
+        vo.setOrderInfo(orderInfoMapper.getOrderInfoList(lease.getId()));
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Override
+    public TenantIdAndUserIdVO byId(Integer id) {
+        TenantIdAndUserIdVO vo = new TenantIdAndUserIdVO();
+        vo.setMszLease(selectOne(new EntityWrapper<MszLease>().eq("id", id)));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        if (vo.getMszLease().getOperator() != null) {
+            SysUser operator = sysUserService.selectOne(new EntityWrapper<SysUser>().eq("id", vo.getMszLease().getOperator()));
+            if (operator != null) {
+                vo.setOperator(operator.getTrueName() == null ? "未填写姓名" : operator.getTrueName());
+            }
+        }
+        vo.setOrderInfo(mszOrderInfoService.selectOne(new EntityWrapper<MszOrderInfo>().eq("leaseId", vo.getMszLease().getId())));
+        vo.setMszRoom(mszRoomService.selectById(vo.getMszLease().getRoomId()));
+        if (vo.getMszLease() == null) { //没找到就是数据有误
+            return null;
+        }
+        vo.setMszAccount(mszAccountService.selectById(vo.getMszLease().getTenantId()));
+        vo.setSysUser(sysUserService.selectById(vo.getMszLease().getUserId()));
+        return vo;
+    }
+
+    @Override
+    public List<WeProgramLeaseListVO> leaseByTenantId(Integer id) {
+        return mszLeaseMapper.leaseByTenantId(id);
+    }
+
+    @Override
+    public LeaseNumVO getCountNum(SysUser user) {
+        String role = user.getRole();
+        LeaseNumVO vo = new LeaseNumVO();
+        Integer orgId = user.getOrgId();
+        if (role.equals("管理员")) {
+            vo.setAppointmentNum(scheduleMapper.selectCount(new EntityWrapper<MszSchedule>().eq("is_del", "0")));
+            vo.setExecuteNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "1")));
+            vo.setEndNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("status", "2")));
+            vo.setExceptionNum(mszLeaseMapper.selectCount(new EntityWrapper<MszLease>().eq("spotFlag", "1")));
+        } else {
+            vo.setAppointmentNum(scheduleMapper.getScheduleNum(orgId));
+            vo.setExecuteNum(mszLeaseMapper.getLeaseNum("1", orgId));
+            vo.setEndNum(mszLeaseMapper.getLeaseNum("2", orgId));
+            vo.setExceptionNum(mszLeaseMapper.getSpotLeaseNum("1", orgId));
+        }
+
+        return vo;
+    }
+
+    @Override
+    public List<MszLease> signLeaseByTenantId(Integer tenantId) {
+
+        return mszLeaseMapper.signLeaseByTenantId(tenantId);
+    }
+
+    @Override
+    public List<AchievementVo> getMszLeaseListByUser(PagingRequest pagingRequest, Integer userId, int type) {
+        if (pagingRequest == null) {
+            return mszLeaseMapper.getMszLeaseListByUser(0, 0, userId, type);
+        } else {
+            int start = (pagingRequest.getOffset() - 1) * pagingRequest.getLimit();
+            return mszLeaseMapper.getMszLeaseListByUser(start, pagingRequest.getLimit(), userId, type);
+        }
+    }
+
+    @Override
+    public int getMszLeaseListByUserSums(Integer userId, int type) {
+        return mszLeaseMapper.getMszLeaseListByUserSums(userId, type);
+    }
+}

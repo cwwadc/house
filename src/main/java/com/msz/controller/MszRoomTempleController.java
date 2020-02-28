@@ -1,0 +1,167 @@
+package com.msz.controller;
+
+import com.msz.annotation.LoginRequired;
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import com.msz.common.SysLogUtil;
+import com.msz.common.UserCommon;
+import com.msz.model.MszRoomTemple;
+import com.msz.model.SysUser;
+import com.msz.service.MszRoomTempleService;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+import javax.servlet.http.HttpServletRequest;
+
+
+/**
+ * <p>
+ * 楼栋模板表 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-09-21 ${time}
+ */
+@Api(value = "/msz-room-temples", description = "楼栋模板表 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-room-temples")
+public class MszRoomTempleController {
+
+    /**
+    
+     *    id  Integer 
+    
+     *    属于哪楼的模板  houseId  Integer 
+    
+     *    网点id  orgId  Integer 
+    
+     *    采集人  userId  Integer 
+    
+     *    房东id  telId  Integer 
+    
+     *    省份id  provinceId  Integer 
+    
+     *    城市id  cityId  Integer 
+    
+     *    区县id  countyId  Integer 
+    
+     *    街道  townId  Integer 
+    
+     *    街区号  townNumber  String 
+    
+     *    地址  address  String 
+    
+     *    小区  community  String 
+    
+     *    室  room  String 
+    
+     *    厅  hall  String 
+    
+     *    卫  toilet  String 
+    
+     *    户型描述  houseDesc  String 
+    
+     *    楼层  floor  String 
+    
+     *    共几层  whichFloor  String 
+    
+     *    是否有电梯：1-是，2-否  elevator  boolean 
+    
+     *    房间面积  area  Double 
+    
+     *    装修情况  decorate  Integer 
+    
+     *    朝向  toward  Integer 
+    
+     *    房间配置（1：全部，2：标配，3：电视，4：空调，5：热水器，6：沙发，7：床，8：暖气，9：衣柜，10：可做饭，11：独立卫生间，12：独立阳台，13：冰箱，14：洗衣机）  configuration  String 
+    
+     *    付款方式(0: 月付  1 季付 2: 半年付 3: 一年付  )  payWay  Integer 
+    
+     *    租金价格  rentPrice  BigDecimal 
+    
+     *    押金  depositPrice  BigDecimal 
+    
+     *    底价  floorPrice  BigDecimal 
+    
+     *    差价  diffPrice  BigDecimal 
+    
+     *    标题  title  String 
+    
+     *    房间描述  description  String 
+    
+     *    图  indoorImage  String 
+         */
+    @Autowired
+    private MszRoomTempleService mszRoomTempleService;
+    @Autowired
+    private SysLogUtil sysLogUtil;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszRoomTemple-------PC@Author=Maoyy", notes = "根据id获取单个MszRoomTemple-------PC@Author=Maoyy")
+    public RespEntity< MszRoomTemple > get(@PathVariable Integer id){
+        return RespEntity.ok().setResponseContent(mszRoomTempleService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszRoomTemple-------PC@Author=Maoyy", notes = "分页查询MszRoomTemple-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszRoomTemple>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(mszRoomTempleService.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping
+    @ApiOperation(value = "保存MszRoomTemple-------PC@Author=Maoyy", notes = "保存MszRoomTemple-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity insert(HttpServletRequest request, @RequestBody MszRoomTemple mszRoomTemple ){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszRoomTempleService.insert( mszRoomTemple) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->新增->成功");
+            return RespEntity.badRequest("保存失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->新增->成功");
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping
+    @ApiOperation(value = "根据ID修改MszRoomTemple-------PC@Author=Maoyy", notes = "根据ID修改MszRoomTemple-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity update(HttpServletRequest request, @RequestBody MszRoomTemple mszRoomTemple ){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszRoomTempleService.updateById( mszRoomTemple ) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->更新->失败");
+            return RespEntity.badRequest("更新失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->更新->成功");
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("{id}")
+    @ApiOperation(value = "根据ID删除MszRoomTemple-------PC@Author=Maoyy", notes = "根据ID删除MszRoomTemple-------PC@Author=Maoyy")
+    @LoginRequired
+    public RespEntity delete(HttpServletRequest request, @PathVariable Integer id){
+        SysUser sysUser = UserCommon.getCurrentUser();
+        if ( ! mszRoomTempleService.deleteById(id) ){
+            sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->删除->失败");
+            return RespEntity.badRequest("删除失败");
+        }
+        sysLogUtil.insertSysLog(request, sysUser.getId(), sysUser.getUsername(),"房屋图片 ->删除->成功");
+        return RespEntity.ok("删除成功");
+    }
+
+
+
+}

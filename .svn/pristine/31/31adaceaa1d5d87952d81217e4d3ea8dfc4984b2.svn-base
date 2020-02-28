@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderHistoryMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszOrderHistory">
+        <id column="id" property="id" />
+        <result column="no" property="no" />
+        <result column="leaseId" property="leaseId" />
+        <result column="roomId" property="roomId" />
+        <result column="landlordId" property="landlordId" />
+        <result column="tenantId" property="tenantId" />
+        <result column="billDay" property="billDay" />
+        <result column="collectMoneyDay" property="collectMoneyDay" />
+        <result column="rentPrice" property="rentPrice" />
+        <result column="paidRentPrice" property="paidRentPrice" />
+        <result column="depositPrice" property="depositPrice" />
+        <result column="paidDepositPrice" property="paidDepositPrice" />
+        <result column="receiveTotal" property="receiveTotal" />
+        <result column="available" property="available" />
+        <result column="flag" property="flag" />
+        <result column="breachPrice" property="breachPrice" />
+        <result column="endTime" property="endTime" />
+        <result column="status" property="status" />
+        <result column="isDel" property="isDel" />
+        <result column="updateTime" property="updateTime" />
+        <result column="createTime" property="createTime" />
+        <result column="orgId" property="orgId" />
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, leaseId, roomId, landlordId, tenantId, billDay, collectMoneyDay, rentPrice, paidRentPrice, depositPrice, paidDepositPrice, receiveTotal, available, flag, breachPrice, endTime, status, isDel, updateTime, createTime, orgId
+    </sql>
+    <!--  byYearMonthGroup 接口 VO -->
+    <sql id="Pay_Info_VO">
+       DATE_FORMAT(createTime, '%Y年%m月') AS date,sum(total) AS money
+    </sql>
+    <select id="byYearMonthGroup" resultType="java.util.Map">
+        SELECT
+        <include refid="Pay_Info_VO"/>
+        FROM msz_order_history WHERE landlordId = #{landlordId} GROUP BY date ORDER BY date desc
+    </select>
+
+    <select id="byMonthGroup" resultType="com.msz.VO.MszOrderHistoryVO">
+        SELECT m.id, m.tenantId accountId,a.name accountName, m.total amt, m.status, m.updateTime, m.createTime FROM msz_order_history m LEFT JOIN msz_account a on m.tenantId = a.id WHERE landlordId = #{id} and DATE_FORMAT(m.createTime, '%Y年%m月') = #{date}
+    </select>
+
+
+    <select id="findList" resultType="com.msz.VO.MszOrderInfoVo" parameterType="com.msz.VO.MszOrderInfoVo">
+        SELECT m.*,a.name as "tenantName" from msz_order_history m LEFT JOIN msz_account a ON m.tenantId=a.id
+        where m.isDel = 0
+        <if test="status != null and status != ''">
+            and m.status = #{status}
+        </if>
+        <if test="endTimeBegin != null and endTimeBegin != '' and endTimeEnd != null and endTimeEnd != ''">
+            and m.endTime between #{endTimeBegin} and #{endTimeEnd}
+        </if>
+        <if test="tenantName != null and tenantName != ''">
+            and a.name like "%"#{tenantName}"%"
+        </if>
+        <if test="orgId != null and orgId != ''">
+            and m.orgId = #{orgId}
+        </if>
+    </select>
+</mapper>

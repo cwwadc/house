@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderChargeMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszOrderCharge">
+		<id column="id" property="id" />
+		<result column="order_id" property="orderId" />
+		<result column="charge_name" property="chargeName" />
+		<result column="receive_amount" property="receiveAmount" />
+		<result column="charge_month" property="chargeMonth" />
+		<result column="is_del" property="isDel" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+	<!-- 通用查询结果列 -->
+	<sql id="Base_Column_List">
+        id, order_id AS orderId, charge_name AS chargeName, receive_amount AS receiveAmount, charge_month AS chargeMonth, is_del AS isDel, create_time AS createTime
+    </sql>
+
+	<select id="getMoneyByLease" resultType="com.msz.model.MszLeaseCharge">
+        SELECT
+        moc.chargeName AS chargeName,
+        moc.chargePrice AS chargePrice,
+        moc.createTime AS createTime
+        FROM
+        msz_lease_charge moc
+
+        WHERE
+        moc.isDel='0'
+        <if test="leaseId!=null and leaseId!=''">
+            AND moc.leaseId = #{leaseId}
+        </if>
+
+
+	</select>
+    <!--SELECT
+			moc.charge_name AS chargeName,
+			moc.receive_amount AS chargePrice,
+			moc.create_time AS createTime
+		FROM
+			msz_order_charge moc
+			LEFT JOIN msz_order_info moi ON moc.order_id=moi.id
+			LEFT JOIN msz_order_history moh ON moc.order_id=moh.id
+		WHERE
+			moc.is_del='0'
+			<if test="leaseId!=null and leaseId!=''">
+				AND (moi.leaseId = #{leaseId} OR moh.leaseId = #{leaseId})
+			</if>-->
+
+</mapper>

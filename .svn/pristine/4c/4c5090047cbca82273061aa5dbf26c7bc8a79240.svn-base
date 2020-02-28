@@ -1,0 +1,173 @@
+package com.msz.service.impl;
+
+import com.baomidou.mybatisplus.mapper.EntityWrapper;
+import com.baomidou.mybatisplus.service.impl.ServiceImpl;
+import com.msz.Scheduler.LeaseScheduler;
+import com.msz.VO.FloorVO;
+import com.msz.VO.HouseVO;
+import com.msz.VO.TelHouseVO;
+import com.msz.VO.WeHouseDataVO;
+import com.msz.common.PagingRequest;
+import com.msz.common.UserCommon;
+import com.msz.dao.MszHouseMapper;
+import com.msz.model.*;
+import com.msz.service.*;
+import com.msz.util.DateUtil;
+import com.msz.util.FirstCharUtil;
+import com.msz.util.RandomUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.baomidou.mybatisplus.mapper.Wrapper;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+
+/**
+ * <p>
+ * 服务实现类
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-09-17 ${time}
+ */
+@Service
+public class MszHouseServiceImpl extends ServiceImpl<MszHouseMapper, MszHouse> implements MszHouseService {
+    private static Logger logger = LoggerFactory.getLogger(MszHouseServiceImpl.class);
+
+    @Autowired
+    private MszHouseMapper mszHouseMapper;
+
+    @Autowired
+    private MszFloorService mszFloorService;
+
+    @Autowired
+    private MszRoomService mszRoomService;
+
+    @Autowired
+    private SysCityService sysCityService;
+
+    @Autowired
+    UserCommon userCommon;
+
+
+    @Override
+    public PageInfo<MszHouse> listPage(PagingRequest pagingRequest, Wrapper wrapper) {
+        PageHelper.startPage(pagingRequest.getOffset(), pagingRequest.getLimit());
+        return new PageInfo<>(super.selectList(wrapper));
+    }
+
+    /**
+     * @Author Maoyy
+     * @Description 迭代各个房源（栋）下的层数
+     * @Date 10:32 2019/9/18
+     **/
+    @Override
+    public PageInfo<HouseVO> byRoom(SysUser user, Wrapper wrapper) {
+
+        List<HouseVO> vo = new ArrayList<>();
+        String role = user.getRole();
+        if (role.equals("管理员")) {
+            List<MszHouse> houses = super.selectList(wrapper);
+            for (MszHouse item : houses) {
+                HouseVO houseVO = new HouseVO();
+                houseVO.setId(item.getId());
+                houseVO.setAddress(item.getAddress());
+                houseVO.setHouseName(item.getHouseName());
+                houseVO.setOrgId(item.getOrgId());
+                List<FloorVO> list = mszFloorService.FloorByRoom(item.getId());
+                houseVO.setFloor(list);
+                vo.add(houseVO);
+            }
+        } else {
+            wrapper.eq("orgId", user.getOrgId());
+            List<MszHouse> houses = super.selectList(wrapper);
+            for (MszHouse item : houses) {
+                HouseVO houseVO = new HouseVO();
+                houseVO.setId(item.getId());
+                houseVO.setAddress(item.getAddress());
+                houseVO.setHouseName(item.getHouseName());
+                houseVO.setOrgId(item.getOrgId());
+                List<FloorVO> list = mszFloorService.FloorByRoom(item.getId());
+                houseVO.setFloor(list);
+                vo.add(houseVO);
+            }
+        }
+
+        return new PageInfo<>(vo);
+    }
+
+    /**
+     * @Author Maoyy
+     * @Description 插入数据并返回主键
+     * @Date 9:39 2019/9/20
+     **/
+    @Override
+    public Integer insertHouseGetId(MszHouse mszHouse) {
+        return mszHouseMapper.insertHouseGetId(mszHouse);
+    }
+
+    @Override
+    public boolean insertRoom(MszRoom mszRoom, MszHouse house, Integer houseNumber, Integer roomNumber) {
+        try {
+            for (int i = 0; i < houseNumber; i++) {
+                MszFloor floor = new MszFloor();
+                floor.setHouseId(house.getId());
+                floor.setName(i + 1);
+                //这里新增层
+                mszFloorService.insertHouseGetId(floor);
+                for (int j = 0; j < roomNumber; j++) {
+                    mszRoom.setFloorId(floor.getId());
+                    mszRoom.setFloorName(floor.getName().toString());
+                    String houseNumberStr = j > 10 ? String.valueOf(j + 1) : "0" + (j + 1);
+                    mszRoom.setHouseNumber((i + 1) + houseNumberStr);
+                    //1.城市首字母
+                    SysCity sysCity = sysCityService.selectOne(new EntityWrapper<SysCity>().eq("id", mszRoom.getCityId()));
+                    String pyIndexStr = FirstCharUtil.getPYIndexStr(sysCity.getName(), true);
+                    //2.年月日
+                    String dayStr = DateUtil.getDayStr(new Date(), "yyyyMMddHHmmss");
+                    //3.随机数
+                    String randomStr = RandomUtil.getRandomStr(6);
+                    String no = pyIndexStr + dayStr + randomStr;
+                    mszRoom.setNo(no);
+                    mszRoom.setName(mszRoom.getHouseNumber());
+                    //新增房源
+                    mszRoomService.insert(mszRoom);
+                }
+            }
+        } catch (Exception e) {
+            logger.error(e.getLocalizedMessage());
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public List<TelHouseVO> telHouse(Integer id) {
+        List<MszHouse> houseList = super.selectList(new EntityWrapper<MszHouse>().eq("telId", id));
+        List<TelHouseVO> vo = new ArrayList<>();
+        for (MszHouse houseItem : houseList) {
+            TelHouseVO telHouseVO = new TelHouseVO();
+            telHouseVO.setAddress(houseItem.getAddress());
+            telHouseVO.setHouseName(houseItem.getHouseName());
+            telHouseVO.setId(houseItem.getId());
+            telHouseVO.setFloorSum(mszFloorService.selectCount(new EntityWrapper<MszFloor>().eq("houseId", houseItem.getId())));
+            telHouseVO.setRoomSum(mszRoomService.selectCount(new EntityWrapper<MszRoom>().eq("houseId", houseItem.getId())));
+            vo.add(telHouseVO);
+        }
+        return vo;
+    }
+
+    private MszLeaseService mszLeaseService;
+
+    @Override
+    public List<WeHouseDataVO> getHouseData(Integer id) {
+        return mszHouseMapper.getHouseData(id);
+    }
+}

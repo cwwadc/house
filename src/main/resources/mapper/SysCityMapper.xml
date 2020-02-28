@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.SysCityMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.SysCity">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="province" property="province"/>
+        <result column="city" property="city"/>
+        <result column="district" property="district"/>
+        <result column="town" property="town"/>
+        <result column="parent" property="parent"/>
+        <result column="level" property="level"/>
+        <result column="lng" property="lng"/>
+        <result column="lat" property="lat"/>
+    </resultMap>
+    <!--广东-->
+    <resultMap id="GuangDong" type="com.msz.VO.GuangDongVO">
+        <id column="oneId" property="id"/>
+        <result column="oneName" property="name"/>
+        <collection property="dept" ofType="com.msz.VO.GuangDongDept">
+            <id column="towId" property="id"/>
+            <result column="towName" property="name"/>
+            <collection property="product" ofType="com.msz.VO.GuangDongProduct">
+                <id column="threeId" property="id"/>
+                <result column="threeName" property="name"/>
+            </collection>
+        </collection>
+    </resultMap>
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, name, province, city, district, town, parent, level, lng, lat
+    </sql>
+
+    <select id="getGuangDong" resultMap="GuangDong">
+        SELECT
+         one.id oneId,
+         one.`name` oneName,
+         tow.id towId,
+         tow.`name` towName,
+         three.id threeId,
+         three.`name` threeName
+        FROM sys_city one
+        LEFT JOIN sys_city tow ON tow.parent = one.id
+        LEFT JOIN  sys_city three ON three.parent = tow.id
+        WHERE one.parent = 44
+    </select>
+
+    <select id="getCityList" resultType="com.msz.model.SysCity" parameterType="com.msz.model.SysCity">
+        select
+        <include refid="Base_Column_List"/>
+        from sys_city
+        where province = '广东' and `level` =2 ORDER BY parent ASC
+    </select>
+</mapper>

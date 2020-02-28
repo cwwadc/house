@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderChargeMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszOrderCharge">
+		<id column="id" property="id" />
+		<result column="order_id" property="orderId" />
+		<result column="charge_name" property="chargeName" />
+		<result column="receive_amount" property="receiveAmount" />
+		<result column="paid_amount" property="paidAmount" />
+		<result column="start_time" property="startTime" />
+		<result column="end_time" property="endTime" />
+		<result column="is_del" property="isDel" />
+		<result column="create_time" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, order_id AS orderId, charge_name AS chargeName, receive_amount AS receiveAmount, paid_amount AS paidAmount, start_time AS startTime, end_time AS endTime, is_del AS isDel, create_time AS createTime
+    </sql>
+
+</mapper>

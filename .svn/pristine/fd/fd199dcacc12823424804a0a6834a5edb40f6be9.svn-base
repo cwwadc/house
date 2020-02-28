@@ -1,0 +1,101 @@
+package com.msz.controller;
+
+import com.msz.model.MszSchedule;
+import com.msz.service.MszScheduleService;
+
+import com.msz.common.PagingRequest;
+import com.msz.common.RespEntity;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+
+
+/**
+ * <p>
+ * 预付定金表 前端控制器
+ * </p>
+ *
+ * @author Maoyy
+ * @since 2019-10-08 ${time}
+ */
+@Api(value = "/msz-schedules", description = "预付定金表 接口; Responseble:Maoyy")
+@RestController
+@RequestMapping("/msz-schedules")
+public class MszScheduleController {
+
+    /**
+    
+     *    主键ID  id  Integer 
+    
+     *    房屋ID  roomId  Integer 
+    
+     *    开始时间  scheduleStartTime  Date 
+    
+     *    结束时间  scheduleEndTime  Date 
+    
+     *    预付定金  schedulePrice  BigDecimal 
+    
+     *    0 不应用到每期收费  1 应用到每期收费  available  String 
+    
+     *    是否删除  isDel  String 
+    
+     *    创建时间  createTime  Date 
+         */
+    @Autowired
+    private MszScheduleService mszScheduleService;
+
+
+    @GetMapping("{id}")
+    @ApiOperation(value = "根据id获取单个MszSchedule-------PC@Author=Maoyy", notes = "根据id获取单个MszSchedule-------PC@Author=Maoyy")
+    public RespEntity< MszSchedule > get(@PathVariable Integer id){
+        return RespEntity.ok().setResponseContent(mszScheduleService.selectById(id));
+    }
+
+
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "offset", value = "起始页", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "limit", value = "记录数", required = true, paramType = "query")
+    })
+    @ApiOperation(value = "分页查询MszSchedule-------PC@Author=Maoyy", notes = "分页查询MszSchedule-------PC@Author=Maoyy")
+    @GetMapping
+    public RespEntity<PageInfo<MszSchedule>>list(PagingRequest pagingRequest){
+        return RespEntity.ok().setResponseContent(mszScheduleService.listPage(pagingRequest,null));
+    }
+
+
+    @PostMapping("/insertSchedule")
+    @ApiOperation(value = "保存MszSchedule(预定房源)-------PC@Author=Maoyy", notes = "保存MszSchedule(预定房源)-------PC@Author=Maoyy")
+    public RespEntity insertSchedule(@RequestBody MszSchedule mszSchedule ){
+        if ( ! mszScheduleService.insertSchedule( mszSchedule) ){
+        return RespEntity.badRequest("保存失败");
+        }
+        return RespEntity.ok("保存成功");
+    }
+
+
+    @PutMapping("/updateSchedule")
+    @ApiOperation(value = "根据ID修改MszSchedule-------PC@Author=Maoyy", notes = "根据ID修改MszSchedule-------PC@Author=Maoyy")
+    public RespEntity updateSchedule(@RequestBody MszSchedule mszSchedule ){
+        if ( ! mszScheduleService.updatSchedule( mszSchedule ) ){
+        return RespEntity.badRequest("更新失败");
+        }
+        return RespEntity.ok("更新成功");
+    }
+
+
+    @DeleteMapping("/delete/{id}")
+    @ApiOperation(value = "根据ID删除MszSchedule-------PC@Author=Maoyy", notes = "根据ID删除MszSchedule-------PC@Author=Maoyy")
+    public RespEntity delete(@PathVariable Integer id){
+        if ( ! mszScheduleService.deleteById(id) ){
+        return RespEntity.badRequest("删除失败");
+        }
+        return RespEntity.ok("删除成功");
+    }
+
+
+
+}

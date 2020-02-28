@@ -1,0 +1,93 @@
+# 日志
+logging:
+  level:
+    com.msz.dao: debug
+
+
+
+# 数据库 ===============次数据库仅为测试使用项目是否已成功运行，数据最好不要进行操作 。
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    username: root
+    password: 123456
+
+
+ # 现用本地测试数据库
+    url: jdbc:mysql://192.168.0.98:3306/house1.1?#useUnicode=true&characterEncoding=UTF-8&useSSL=false
+    type: com.alibaba.druid.pool.DruidDataSource
+    # 文档 : https://github.com/alibaba/druid/tree/1.1.0/druid-spring-boot-starter
+    druid:
+      # 连接池配置，说明请参考Druid Wiki，配置_DruidDataSource参考配置 -> https://github.com/alibaba/druid/wiki/%E9%85%8D%E7%BD%AE_DruidDataSource%E5%8F%82%E8%80%83%E9%85%8D%E7%BD%AE
+      filters: stat # 配置监控统计拦截的filters,默认值为stat，配置多个请以英文逗号分隔，如stat,wall,log4j
+      initialSize: 5
+      minIdle: 5
+      maxActive: 20
+      maxWait: 60000 # 配置获取连接等待超时的时间
+      timeBetweenEvictionRunsMillis: 60000 # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+      minEvictableIdleTimeMillis: 300000 # 配置一个连接在池中最小生存的时间，单位是毫秒
+      validationQuery: SELECT 1
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+      poolPreparedStatements: true # 是否打开PSCache
+      maxPoolPreparedStatementPerConnectionSize: 20
+
+# Redis
+    redis:
+      host: localhost
+      port: 6379
+      pool:
+        max-idle: 100
+        min-idle: 1
+        max-active: 1000
+        max-wait: -1
+
+# port
+server:
+  port: 8080
+  tomcat:
+    accesslog:
+      enabled: true
+      directory: /applogs/accesslog/buildArahitecture
+      pattern: "%h %l %u %t \"%r\" %s %D"
+
+#必须配置 不然Invalid bound statement (not found)
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/*.xml
+  config-location:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#
+# 分页 page helper
+pagehelper:
+    helperDialect: mysql
+    supportMethodsArguments: true
+    params: count=countSql
+
+ # ftp 配置信息
+#ftp:
+#  enabled: true
+#  host: 47.92.250.148 #120.77.179.74
+#  username: admin #test_axecn_cn
+#  password: admin #test_axecn_cn
+#  port: 21
+
+# sftp 配置信息
+cylinder-sftp-name: root
+cylinder-sftp-password: hlxj@123456
+cylinder-sftp-host: 118.190.58.103
+cylinder-sftp-port: 22
+http-image-path: http://api.homoriole.com
+#http-image-path: http://118.190.58.103
+#Scheduler定时器
+#每隔5分钟执行一次
+lease.update.room.crop: 0 0/5 * * * ?
+#每天的20点执行一次
+lease.insert.message.crop: 0 0 20 * * ?
+#每隔一小时执行一次
+lease.update.data.crop: 0 0 0/1 * * ?
+#每天凌晨10点执行一次
+lease.billDay.room.crop: 0 31 20 * * ?
+#每隔1分钟执行一次
+lease.update.min.crop: 0 0/1 * * * ?

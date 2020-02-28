@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszRoomMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.msz.model.MszRoom">
+        <id column="id" property="id"/>
+        <result column="no" property="no"/>
+        <result column="telId" property="telId"/>
+        <result column="name" property="name"/>
+        <result column="provinceId" property="provinceId"/>
+        <result column="cityId" property="cityId"/>
+        <result column="countyId" property="countyId"/>
+        <result column="townId" property="townId"/>
+        <result column="houseNumber" property="houseNumber"/>
+        <result column="address" property="address"/>
+        <result column="room" property="room"/>
+        <result column="hall" property="hall"/>
+        <result column="toilet" property="toilet"/>
+        <result column="floor" property="floor"/>
+        <result column="whichFloor" property="whichFloor"/>
+        <result column="area" property="area"/>
+        <result column="isElevator" property="elevator"/>
+        <result column="decorate" property="decorate"/>
+        <result column="toward" property="toward"/>
+        <result column="configuration" property="configuration"/>
+        <result column="payWay" property="payWay"/>
+        <result column="payType" property="payType"/>
+        <result column="rentPrice" property="rentPrice"/>
+        <result column="depositPrice" property="depositPrice"/>
+        <result column="FloorPrice" property="FloorPrice"/>
+        <result column="diffPrice" property="diffPrice"/>
+        <result column="title" property="title"/>
+        <result column="description" property="description"/>
+        <result column="indoor_image" property="indoorImage"/>
+        <result column="huxing_image" property="huxingImage"/>
+        <result column="outdoor_image" property="outdoorImage"/>
+        <result column="orgId" property="orgId"/>
+        <result column="userId" property="userId"/>
+        <result column="status" property="status"/>
+        <result column="isDel" property="isDel"/>
+        <result column="endTime" property="endTime"/>
+        <result column="isLock" property="isLock"/>
+        <result column="updateTime" property="updateTime"/>
+        <result column="createTime" property="createTime"/>
+    </resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        r.id, r.no,r.telId,r.townNumber, r.name,r.houseName houseName,r.houseId houseId,r.floorId floorId,r.floorName floorName, r.provinceId, r.cityId, r.countyId, r.townId, r.houseNumber, r.address, r.community, r.room, r.hall, r.toilet, r.floor, r.whichFloor, r.area, r.isElevator AS elevator, r.decorate, r.toward, r.configuration, r.payWay, r.payType, r.rentPrice, r.depositPrice, r.FloorPrice, r.diffPrice, r.title, r.description, r.indoor_image AS indoorImage, r.huxing_image AS huxingImage, r.outdoor_image AS outdoorImage, r.orgId, r.userId, r.status, r.isDel, r.updateTime, r.createTime,
+    	r.endTime,r.isLock
+   </sql>
+
+    <select id="findList" resultType="com.msz.model.MszRoom" parameterType="com.msz.model.MszRoom">
+        SELECT<include refid="Base_Column_List"/>,
+        a.`name` AS "telName", u.trueName AS "userName", o.`name` AS "orgName",
+        u2.trueName housekeeper FROM msz_room r
+        LEFT JOIN msz_account a ON a.id=r.telId
+        LEFT JOIN sys_user u ON u.id=r.userId
+        LEFT JOIN sys_org o ON o.id= r.orgId
+        LEFT JOIN msz_lease l on l.roomId = r.id
+        LEFT JOIN sys_user u2 ON l.userId = u2.id
+        WHERE 0=0
+        <if test="status != null and status != ''">
+            AND r.status = #{status}
+        </if>
+        <if test="address != null and address != ''">
+            AND r.address LIKE "%" #{address} "%"
+        </if>
+        <if test="telId != null and telId != ''">
+            AND r.telId = #{telId}
+        </if>
+        <if test="orgId != null and orgId != ''">
+            AND r.orgId = #{orgId}
+        </if>
+        <if test="houseName != null and houseName != ''">
+            AND r.houseName LIKE "%" #{houseName} "%"
+        </if>
+        <if test="houseNumber != null and houseNumber != ''">
+            AND r.houseNumber LIKE "%" #{houseNumber} "%"
+        </if>
+        <if test="housekeeper != null and housekeeper != ''">
+            AND u2.trueName LIKE "%" #{housekeeper} "%"
+        </if>
+    </select>
+
+    <select id="getRooms" resultType="com.msz.VO.WeRoomsVO">
+		SELECT
+            r.id id,
+            r.rentPrice rentPrice,
+            r.houseName houseName,
+            l.collectMoneyDay collectMoneyDay,
+            r.houseNumber houseNumber,
+            r.`status`
+        FROM
+            msz_room r
+            LEFT JOIN msz_lease l ON l.roomId = r.id
+        WHERE
+            1 = 1
+            <if test="status != null ">
+                AND r.STATUS = #{status}
+            </if>
+             AND r.telId = #{id}
+	</select>
+</mapper>

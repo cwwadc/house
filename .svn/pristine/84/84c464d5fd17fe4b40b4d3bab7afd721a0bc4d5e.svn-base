@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.msz.dao.MszOrderInfoMapper">
+
+	<!-- 通用查询映射结果 -->
+	<resultMap id="BaseResultMap" type="com.msz.model.MszOrderInfo">
+		<id column="id" property="id" />
+		<result column="no" property="no" />
+		<result column="leaseId" property="leaseId" />
+		<result column="roomId" property="roomId" />
+		<result column="landlordId" property="landlordId" />
+		<result column="tenantId" property="tenantId" />
+		<result column="rentPrice" property="rentPrice" />
+		<result column="depositPrice" property="depositPrice" />
+		<result column="breachPrice" property="breachPrice" />
+		<result column="endTime" property="endTime" />
+		<result column="status" property="status" />
+		<result column="isDel" property="isDel" />
+		<result column="updateTime" property="updateTime" />
+		<result column="createTime" property="createTime" />
+	</resultMap>
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        id, no, leaseId, roomId, landlordId, tenantId, rentPrice, depositPrice, breachPrice, endTime, status, isDel, updateTime, createTime
+    </sql>
+
+	<select id="listAll" resultType="com.msz.VO.MszOrderInfoVo" parameterType="com.msz.VO.MszOrderInfoVo">
+		SELECT m.*,a.name as "tenantName",su.trueName AS "operatorName"  from msz_order_info m
+		LEFT JOIN msz_account a ON m.tenantId=a.id
+		LEFT JOIN sys_user su ON m.operatorId=su.id
+		LEFT JOIN msz_lease l ON m.leaseId = l.id
+		where m.isDel = 0
+		<if test="status != null and status != ''">
+			and m.status  = #{status}
+		</if>
+		<if test="endTimeBegin != null and endTimeBegin != '' and endTimeEnd != null and endTimeEnd != ''">
+			and m.endTime between #{endTimeBegin} and #{endTimeEnd}
+		</if>
+		<if test="tenantName != null and tenantName != ''">
+			and a.name  like "%"#{tenantName}"%"
+		</if>
+		<if test="orgId != null and orgId != ''">
+			and m.orgId = #{orgId}
+		</if>
+		<if test="collectMoneyDay != null and collectMoneyDay != ''">
+			and l.collectMoneyDay = #{collectMoneyDay}
+		</if>
+	</select>
+
+</mapper>
